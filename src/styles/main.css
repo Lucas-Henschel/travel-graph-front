@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  --p-inputtext-background: #0f172a;
+  --p-inputtext-disabled-background: #1e293b;
+  --p-inputtext-filled-background: #0f172a;
+  --p-inputtext-filled-hover-background: #111827;
+  --p-inputtext-filled-focus-background: #111827;
+  --p-inputtext-border-color: #334155;
+  --p-inputtext-hover-border-color: #475569;
+  --p-inputtext-focus-border-color: #22d3ee;
+  --p-inputtext-invalid-border-color: #fb7185;
+  --p-inputtext-color: #f8fafc;
+  --p-inputtext-disabled-color: #94a3b8;
+  --p-inputtext-placeholder-color: #94a3b8;
+  --p-inputtext-invalid-placeholder-color: #fda4af;
+  --p-inputtext-shadow: none;
+  --p-password-background: var(--p-inputtext-background);
+  --p-password-disabled-background: var(--p-inputtext-disabled-background);
+  --p-password-filled-background: var(--p-inputtext-filled-background);
+  --p-password-filled-hover-background: var(--p-inputtext-filled-hover-background);
+  --p-password-filled-focus-background: var(--p-inputtext-filled-focus-background);
+  --p-password-border-color: var(--p-inputtext-border-color);
+  --p-password-hover-border-color: var(--p-inputtext-hover-border-color);
+  --p-password-focus-border-color: var(--p-inputtext-focus-border-color);
+  --p-password-invalid-border-color: var(--p-inputtext-invalid-border-color);
+  --p-password-color: var(--p-inputtext-color);
+  --p-password-disabled-color: var(--p-inputtext-disabled-color);
+  --p-password-placeholder-color: var(--p-inputtext-placeholder-color);
+  --p-password-invalid-placeholder-color: var(--p-inputtext-invalid-placeholder-color);
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.24), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.1), transparent 25%),
+    #020617;
+  color: #e2e8f0;
+}
+
+.p-inputtext,
+.p-password-input {
+  background: #0f172a;
+  color: #f8fafc;
+  border-color: #334155;
+}
+
+.p-inputtext::placeholder,
+.p-password-input::placeholder {
+  color: #94a3b8;
+}
+
+.p-inputtext:focus,
+.p-password-input:focus {
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.2);
+}
+
+.p-message {
+  background: rgba(15, 23, 42, 0.75);
+  color: #e2e8f0;
+}
