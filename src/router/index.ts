@@ -1,67 +1,67 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from "vue-router";
 
-import AuthLayout from '@/layouts/AuthLayout.vue'
-import DashboardLayout from '@/layouts/DashboardLayout.vue'
-import DashboardPage from '@/pages/DashboardPage.vue'
-import LoginPage from '@/pages/LoginPage.vue'
-import UsersPage from '@/pages/UsersPage.vue'
+import AuthLayout from "@/layouts/AuthLayout.vue";
+import DashboardLayout from "@/layouts/DashboardLayout.vue";
+import DashboardPage from "@/pages/DashboardPage.vue";
+import LoginPage from "@/pages/LoginPage.vue";
+import UsersPage from "@/pages/UsersPage.vue";
 
-import { registerGuards } from './guards'
+import { registerGuards } from "./guards";
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
-      path: '/',
+      path: "/",
       component: AuthLayout,
       children: [
         {
-          path: '',
-          name: 'login',
-          component: LoginPage
-        }
-      ]
+          path: "",
+          name: "login",
+          component: LoginPage,
+        },
+      ],
     },
     {
-      path: '/login',
-      redirect: '/'
+      path: "/login",
+      redirect: "/",
     },
     {
-      path: '/dashboard',
+      path: "/dashboard",
       component: DashboardLayout,
       meta: {
-        requiresAuth: true
+        requiresAuth: true,
       },
       children: [
         {
-          path: '',
-          redirect: { name: 'dashboard-home' }
+          path: "",
+          redirect: { name: "dashboard-home" },
         },
         {
-          path: 'home',
-          name: 'dashboard-home',
-          component: DashboardPage
+          path: "home",
+          name: "dashboard-home",
+          component: DashboardPage,
         },
         {
-          path: 'users',
-          name: 'dashboard-users',
-          component: UsersPage
-        }
-      ]
+          path: "users",
+          name: "dashboard-users",
+          component: UsersPage,
+        },
+      ],
     },
     {
-      path: '/:pathMatch(.*)*',
-      redirect: '/'
-    }
-  ]
-})
+      path: "/:pathMatch(.*)*",
+      redirect: "/",
+    },
+  ],
+});
 
-registerGuards(router)
+registerGuards(router);
 
-export default router
+export default router;
 
-declare module 'vue-router' {
+declare module "vue-router" {
   interface RouteMeta {
-    requiresAuth?: boolean
+    requiresAuth?: boolean;
   }
 }

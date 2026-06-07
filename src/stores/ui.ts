@@ -1,21 +1,21 @@
-import { computed, shallowRef } from 'vue'
-import { defineStore } from 'pinia'
+import { computed, shallowRef } from "vue";
+import { defineStore } from "pinia";
 
-export const useUiStore = defineStore('ui', () => {
-  const sidebarOpen = shallowRef(false)
+export const useUiStore = defineStore("ui", () => {
+  const sidebarOpen = shallowRef(false);
 
-  const isSidebarOpen = computed(() => sidebarOpen.value)
+  const isSidebarOpen = computed(() => sidebarOpen.value);
 
   function openSidebar() {
-    sidebarOpen.value = true
+    sidebarOpen.value = true;
   }
 
   function closeSidebar() {
-    sidebarOpen.value = false
+    sidebarOpen.value = false;
   }
 
   function toggleSidebar() {
-    sidebarOpen.value = !sidebarOpen.value
+    sidebarOpen.value = !sidebarOpen.value;
   }
 
   return {
@@ -23,6 +23,6 @@ export const useUiStore = defineStore('ui', () => {
     isSidebarOpen,
     openSidebar,
     closeSidebar,
-    toggleSidebar
-  }
-})
+    toggleSidebar,
+  };
+});

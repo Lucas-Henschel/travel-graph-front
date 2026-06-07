@@ -1,18 +1,18 @@
 export interface AuthUser {
-  id: string
-  name: string
-  email: string
-  role?: string
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
 }
 
 export interface LoginCredentials {
-  email: string
-  password: string
+  email: string;
+  password: string;
 }
 
 export interface LoginResponse {
-  token: string
-  user: AuthUser
+  token: string;
+  user: AuthUser;
 }
 
-export type AuthStatus = 'anonymous' | 'loading' | 'authenticated' | 'error'
+export type AuthStatus = "anonymous" | "loading" | "authenticated" | "error";

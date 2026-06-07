@@ -10,7 +10,7 @@
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
-    'Segoe UI',
+    "Segoe UI",
     sans-serif;
   --p-inputtext-background: #0f172a;
   --p-inputtext-disabled-background: #1e293b;
@@ -29,8 +29,12 @@
   --p-password-background: var(--p-inputtext-background);
   --p-password-disabled-background: var(--p-inputtext-disabled-background);
   --p-password-filled-background: var(--p-inputtext-filled-background);
-  --p-password-filled-hover-background: var(--p-inputtext-filled-hover-background);
-  --p-password-filled-focus-background: var(--p-inputtext-filled-focus-background);
+  --p-password-filled-hover-background: var(
+    --p-inputtext-filled-hover-background
+  );
+  --p-password-filled-focus-background: var(
+    --p-inputtext-filled-focus-background
+  );
   --p-password-border-color: var(--p-inputtext-border-color);
   --p-password-hover-border-color: var(--p-inputtext-hover-border-color);
   --p-password-focus-border-color: var(--p-inputtext-focus-border-color);
@@ -38,7 +42,9 @@
   --p-password-color: var(--p-inputtext-color);
   --p-password-disabled-color: var(--p-inputtext-disabled-color);
   --p-password-placeholder-color: var(--p-inputtext-placeholder-color);
-  --p-password-invalid-placeholder-color: var(--p-inputtext-invalid-placeholder-color);
+  --p-password-invalid-placeholder-color: var(
+    --p-inputtext-invalid-placeholder-color
+  );
 }
 
 html,
@@ -50,8 +56,16 @@ body,
 body {
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(14, 165, 233, 0.24), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.1), transparent 25%),
+    radial-gradient(
+      circle at top left,
+      rgba(14, 165, 233, 0.24),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(56, 189, 248, 0.1),
+      transparent 25%
+    ),
     #020617;
   color: #e2e8f0;
 }

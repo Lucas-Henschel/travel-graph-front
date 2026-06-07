@@ -1,37 +1,41 @@
 <script setup lang="ts">
-import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
+import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from "@/stores/auth";
 
-const authStore = useAuthStore()
-const route = useRoute()
-const router = useRouter()
+const authStore = useAuthStore();
+const route = useRoute();
+const router = useRouter();
 
 const navigationItems = [
   {
-    label: 'Dashboard',
-    to: { name: 'dashboard-home' }
+    label: "Dashboard",
+    to: { name: "dashboard-home" },
   },
   {
-    label: 'Usuários',
-    to: { name: 'dashboard-users' }
-  }
-]
+    label: "Usuários",
+    to: { name: "dashboard-users" },
+  },
+];
 
 function isActiveRoute(targetName: string) {
-  return route.name === targetName
+  return route.name === targetName;
 }
 
 function handleLogout() {
-  authStore.logout()
-  router.push({ name: 'login' })
+  authStore.logout();
+  router.push({ name: "login" });
 }
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-950 text-slate-100 lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
-    <aside class="flex flex-col border-r border-white/10 bg-slate-950 px-6 py-6">
-      <p class="text-2xl font-semibold tracking-wide text-cyan-300">TravelGraph</p>
+  <div
+    class="min-h-screen bg-slate-950 text-slate-100 lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]"
+  >
+    <aside
+      class="flex flex-col border-r border-white/10 bg-slate-950 px-6 py-6"
+    >
+      <p class="text-3xl font-semibold tracking- text-center">TravelGraph</p>
 
       <nav class="mt-10 space-y-2">
         <RouterLink
@@ -41,7 +45,7 @@ function handleLogout() {
             'block rounded-2xl px-4 py-3 text-sm font-medium transition',
             isActiveRoute(item.to.name as string)
               ? 'bg-white text-slate-950'
-              : 'text-slate-300 hover:bg-white/5 hover:text-white'
+              : 'text-slate-300 hover:bg-white/5 hover:text-white',
           ]"
           :to="item.to"
         >
@@ -50,7 +54,7 @@ function handleLogout() {
       </nav>
 
       <button
-        class="mt-auto rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-blue-800 hover:text-white"
+        class="mt-auto rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-950"
         type="button"
         @click="handleLogout"
       >
