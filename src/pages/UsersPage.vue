@@ -4,39 +4,25 @@ import Button from "primevue/button";
 import Card from "primevue/card";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
-import Dialog from "primevue/dialog";
-import FloatLabel from "primevue/floatlabel";
 import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
 import InputText from "primevue/inputtext";
 import { useNotification } from "@/composables/useNotification";
-import Password from "primevue/password";
-
 import { userService } from "@/services/userService";
-import type {
-  UserResponse,
-  CreateUserRequest,
-  UpdateUserRequest,
-} from "@/types/user";
+import type { UserResponse } from "@/types/user";
+import CreateUserDialog from "@/components/users/CreateUserDialog.vue";
+import EditUserDialog from "@/components/users/EditUserDialog.vue";
+import DeleteUserDialog from "@/components/users/DeleteUserDialog.vue";
 
 const users = ref<UserResponse[]>([]);
 const loading = ref(false);
 const searchQuery = ref("");
-
-const dialogVisible = ref(false);
-const dialogMode = ref<"create" | "edit">("create");
-const dialogLoading = ref(false);
-const editingUserId = ref<string | null>(null);
-
 const toast = useNotification();
 
-const formName = ref("");
-const formEmail = ref("");
-const formPassword = ref("");
-
+const createDialogVisible = ref(false);
+const editDialogVisible = ref(false);
 const deleteDialogVisible = ref(false);
-const deletingUser = ref<UserResponse | null>(null);
-const deleteLoading = ref(false);
+const selectedUser = ref<UserResponse | null>(null);
 
 async function fetchUsers() {
   loading.value = true;
@@ -50,75 +36,14 @@ async function fetchUsers() {
   }
 }
 
-function openCreateDialog() {
-  dialogMode.value = "create";
-  formName.value = "";
-  formEmail.value = "";
-  formPassword.value = "";
-  editingUserId.value = null;
-  dialogVisible.value = true;
-}
-
 function openEditDialog(user: UserResponse) {
-  dialogMode.value = "edit";
-  formName.value = user.name;
-  formEmail.value = user.email;
-  formPassword.value = "";
-  editingUserId.value = user.id;
-  dialogVisible.value = true;
-}
-
-async function handleSave() {
-  dialogLoading.value = true;
-
-  try {
-    if (dialogMode.value === "create") {
-      const payload: CreateUserRequest = {
-        name: formName.value,
-        email: formEmail.value,
-        password: formPassword.value,
-      };
-      await userService.create(payload);
-      toast.success("Usuário criado", "O usuário foi criado com sucesso.");
-    } else if (editingUserId.value) {
-      const payload: UpdateUserRequest = {
-        name: formName.value,
-        email: formEmail.value,
-        password: formPassword.value,
-      };
-      await userService.update(editingUserId.value, payload);
-      toast.success("Usuário atualizado", "O usuário foi atualizado com sucesso.");
-    }
-
-    dialogVisible.value = false;
-    await fetchUsers();
-  } catch {
-    toast.error("Erro ao salvar", "Não foi possível salvar o usuário.");
-  } finally {
-    dialogLoading.value = false;
-  }
+  selectedUser.value = user;
+  editDialogVisible.value = true;
 }
 
 function openDeleteDialog(user: UserResponse) {
-  deletingUser.value = user;
+  selectedUser.value = user;
   deleteDialogVisible.value = true;
-}
-
-async function handleDelete() {
-  if (!deletingUser.value) return;
-
-  deleteLoading.value = true;
-
-  try {
-    await userService.remove(deletingUser.value.id);
-    deleteDialogVisible.value = false;
-    toast.success("Usuário excluído", "O usuário foi excluído com sucesso.");
-    await fetchUsers();
-  } catch {
-    toast.error("Erro ao excluir", "Não foi possível excluir o usuário.");
-  } finally {
-    deleteLoading.value = false;
-  }
 }
 
 onMounted(fetchUsers);
@@ -126,7 +51,6 @@ onMounted(fetchUsers);
 
 <template>
   <div class="space-y-6">
-    <!-- Header -->
     <div
       class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
     >
@@ -140,11 +64,10 @@ onMounted(fetchUsers);
         icon="pi pi-plus"
         label="Novo usuário"
         size="small"
-        @click="openCreateDialog"
+        @click="createDialogVisible = true"
       />
     </div>
 
-    <!-- Table card -->
     <Card class="!bg-slate-900/60 !border !border-white/10 !shadow-none">
       <template #content>
         <div class="mb-4">
@@ -245,91 +168,19 @@ onMounted(fetchUsers);
       </template>
     </Card>
 
-    <!-- Create / Edit Dialog -->
-    <Dialog
-      v-model:visible="dialogVisible"
-      :header="dialogMode === 'create' ? 'Novo usuário' : 'Editar usuário'"
-      modal
-      :style="{ width: '28rem' }"
-      :pt="{
-        root: { class: '!bg-slate-900 !border !border-white/10' },
-        header: { class: '!bg-slate-900 !text-white' },
-        content: { class: '!bg-slate-900' },
-      }"
-    >
-      <div class="flex flex-col gap-5">
-        <FloatLabel variant="in">
-          <InputText id="form-name" v-model="formName" fluid />
-          <label for="form-name">Nome</label>
-        </FloatLabel>
-
-        <FloatLabel variant="in">
-          <InputText id="form-email" v-model="formEmail" fluid />
-          <label for="form-email">E-mail</label>
-        </FloatLabel>
-
-        <FloatLabel variant="in">
-          <Password
-            id="form-password"
-            v-model="formPassword"
-            :feedback="false"
-            fluid
-            toggleMask
-          />
-          <label for="form-password">Senha</label>
-        </FloatLabel>
-      </div>
-
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <Button
-            label="Cancelar"
-            severity="secondary"
-            text
-            @click="dialogVisible = false"
-          />
-          <Button
-            :label="dialogMode === 'create' ? 'Criar' : 'Salvar'"
-            :loading="dialogLoading"
-            @click="handleSave"
-          />
-        </div>
-      </template>
-    </Dialog>
-
-    <!-- Delete Confirmation Dialog -->
-    <Dialog
+    <CreateUserDialog
+      v-model:visible="createDialogVisible"
+      @created="fetchUsers"
+    />
+    <EditUserDialog
+      v-model:visible="editDialogVisible"
+      :user="selectedUser"
+      @updated="fetchUsers"
+    />
+    <DeleteUserDialog
       v-model:visible="deleteDialogVisible"
-      header="Confirmar exclusão"
-      modal
-      :style="{ width: '24rem' }"
-      :pt="{
-        root: { class: '!bg-slate-900 !border !border-white/10' },
-        header: { class: '!bg-slate-900 !text-white' },
-        content: { class: '!bg-slate-900' },
-      }"
-    >
-      <p class="text-slate-300">
-        Deseja realmente excluir o usuário
-        <strong class="text-white">{{ deletingUser?.name }}</strong
-        >?
-      </p>
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <Button
-            label="Cancelar"
-            severity="secondary"
-            text
-            @click="deleteDialogVisible = false"
-          />
-          <Button
-            label="Excluir"
-            severity="danger"
-            :loading="deleteLoading"
-            @click="handleDelete"
-          />
-        </div>
-      </template>
-    </Dialog>
+      :user="selectedUser"
+      @deleted="fetchUsers"
+    />
   </div>
 </template>
