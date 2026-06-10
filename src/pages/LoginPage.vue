@@ -10,15 +10,16 @@ import Message from "primevue/message";
 import Password from "primevue/password";
 import { z } from "zod";
 
+import { useNotification } from "@/composables/useNotification";
 import { authService } from "@/services/authService";
 import { useAuthStore } from "@/stores/auth";
 import type { LoginCredentials } from "@/types/auth";
 
 const authStore = useAuthStore();
 const router = useRouter();
+const toast = useNotification();
 
 const loading = ref(false);
-const errorMessage = ref<string | null>(null);
 
 const loginSchema = z.object({
   email: z
@@ -37,7 +38,6 @@ const resolver = zodResolver(loginSchema);
 
 async function handleSubmit(event: FormSubmitEvent) {
   loading.value = true;
-  errorMessage.value = null;
 
   try {
     const response = await authService.login(
@@ -45,6 +45,7 @@ async function handleSubmit(event: FormSubmitEvent) {
     );
 
     authStore.setSession(response.token, response.currentUser);
+    toast.success("Bem-vindo!", "Login realizado com sucesso.");
     await router.push("/dashboard");
   } catch (err: unknown) {
     const status =
@@ -54,10 +55,12 @@ async function handleSubmit(event: FormSubmitEvent) {
         ? (err as { response?: { status?: number } }).response?.status
         : undefined;
 
-    errorMessage.value =
+    toast.error(
+      "Erro de autenticação",
       status === 422
         ? "E-mail ou senha inválidos."
-        : "Erro ao conectar com o servidor.";
+        : "Erro ao conectar com o servidor.",
+    );
   } finally {
     loading.value = false;
   }
@@ -79,10 +82,6 @@ async function handleSubmit(event: FormSubmitEvent) {
         Entre com suas credenciais para acessar o painel.
       </p>
     </div>
-
-    <Message v-if="errorMessage" severity="error" :closable="false">
-      {{ errorMessage }}
-    </Message>
 
     <Form
       v-slot="$form"
