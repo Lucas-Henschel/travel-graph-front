@@ -6,12 +6,14 @@ import Button from "primevue/button";
 import Drawer from "primevue/drawer";
 import Divider from "primevue/divider";
 
+import { useNotification } from "@/composables/useNotification";
 import { authService } from "@/services/authService";
 import { useAuthStore } from "@/stores/auth";
 
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
+const toast = useNotification();
 const mobileMenuOpen = ref(false);
 
 const navigationItems = [
@@ -34,6 +36,7 @@ function isActiveRoute(targetName: string) {
 async function handleLogout() {
   await authService.logout();
   authStore.clearSession();
+  toast.success("Sessão encerrada", "Você foi desconectado com sucesso.");
   router.push({ name: "login" });
 }
 

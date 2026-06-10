@@ -9,7 +9,7 @@ import FloatLabel from "primevue/floatlabel";
 import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
 import InputText from "primevue/inputtext";
-import Message from "primevue/message";
+import { useNotification } from "@/composables/useNotification";
 import Password from "primevue/password";
 
 import { userService } from "@/services/userService";
@@ -26,8 +26,9 @@ const searchQuery = ref("");
 const dialogVisible = ref(false);
 const dialogMode = ref<"create" | "edit">("create");
 const dialogLoading = ref(false);
-const dialogError = ref<string | null>(null);
 const editingUserId = ref<string | null>(null);
+
+const toast = useNotification();
 
 const formName = ref("");
 const formEmail = ref("");
@@ -43,6 +44,7 @@ async function fetchUsers() {
     users.value = await userService.findAll();
   } catch {
     users.value = [];
+    toast.error("Erro ao carregar", "Não foi possível carregar os usuários.");
   } finally {
     loading.value = false;
   }
@@ -53,7 +55,6 @@ function openCreateDialog() {
   formName.value = "";
   formEmail.value = "";
   formPassword.value = "";
-  dialogError.value = null;
   editingUserId.value = null;
   dialogVisible.value = true;
 }
@@ -63,14 +64,12 @@ function openEditDialog(user: UserResponse) {
   formName.value = user.name;
   formEmail.value = user.email;
   formPassword.value = "";
-  dialogError.value = null;
   editingUserId.value = user.id;
   dialogVisible.value = true;
 }
 
 async function handleSave() {
   dialogLoading.value = true;
-  dialogError.value = null;
 
   try {
     if (dialogMode.value === "create") {
@@ -80,6 +79,7 @@ async function handleSave() {
         password: formPassword.value,
       };
       await userService.create(payload);
+      toast.success("Usuário criado", "O usuário foi criado com sucesso.");
     } else if (editingUserId.value) {
       const payload: UpdateUserRequest = {
         name: formName.value,
@@ -87,12 +87,13 @@ async function handleSave() {
         password: formPassword.value,
       };
       await userService.update(editingUserId.value, payload);
+      toast.success("Usuário atualizado", "O usuário foi atualizado com sucesso.");
     }
 
     dialogVisible.value = false;
     await fetchUsers();
   } catch {
-    dialogError.value = "Erro ao salvar usuário.";
+    toast.error("Erro ao salvar", "Não foi possível salvar o usuário.");
   } finally {
     dialogLoading.value = false;
   }
@@ -111,9 +112,10 @@ async function handleDelete() {
   try {
     await userService.remove(deletingUser.value.id);
     deleteDialogVisible.value = false;
+    toast.success("Usuário excluído", "O usuário foi excluído com sucesso.");
     await fetchUsers();
   } catch {
-    // ignore
+    toast.error("Erro ao excluir", "Não foi possível excluir o usuário.");
   } finally {
     deleteLoading.value = false;
   }
@@ -255,10 +257,6 @@ onMounted(fetchUsers);
         content: { class: '!bg-slate-900' },
       }"
     >
-      <Message v-if="dialogError" severity="error" :closable="false" class="mb-4">
-        {{ dialogError }}
-      </Message>
-
       <div class="flex flex-col gap-5">
         <FloatLabel variant="in">
           <InputText id="form-name" v-model="formName" fluid />
