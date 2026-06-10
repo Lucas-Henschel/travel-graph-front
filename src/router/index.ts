@@ -9,7 +9,7 @@ import UsersPage from "@/pages/UsersPage.vue";
 import { registerGuards } from "./guards";
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.VITE_API_URL),
   routes: [
     {
       path: "/",
