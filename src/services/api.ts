@@ -1,5 +1,6 @@
 import { localStorageKeys } from "@/config/localStorageKeys";
-import axios from "axios";
+import type { StandardError } from "@/types/api";
+import axios, { type AxiosError } from "axios";
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -21,12 +22,17 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      localStorage.removeItem(localStorageKeys.SESSION);
       localStorage.removeItem(localStorageKeys.ACCESS_TOKEN);
-      window.location.href = "/";
     }
 
     return Promise.reject(error);
   },
 );
+
+export function extractErrorMessage(err: unknown): string {
+  const axiosError = err as AxiosError<StandardError>;
+  return axiosError.response?.data?.message ?? "Erro desconecido";
+}
 
 export default api;
