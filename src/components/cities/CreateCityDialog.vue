@@ -42,9 +42,7 @@ async function handleSubmit(event: FormSubmitEvent) {
 
   loading.value = true;
 
-  const { error } = await cityService.create(
-    event.values as CreateCityRequest,
-  );
+  const { error } = await cityService.create(event.values as CreateCityRequest);
 
   if (error) {
     toast.error("Erro ao salvar", error);
@@ -106,8 +104,8 @@ async function handleSubmit(event: FormSubmitEvent) {
               id="create-city-latitude"
               name="latitude"
               fluid
-              :minFractionDigits="1"
-              :maxFractionDigits="8"
+              locale="en-US"
+              :maxFractionDigits="20"
             />
             <label for="create-city-latitude">Latitude</label>
           </FloatLabel>
@@ -119,8 +117,8 @@ async function handleSubmit(event: FormSubmitEvent) {
               id="create-city-longitude"
               name="longitude"
               fluid
-              :minFractionDigits="1"
-              :maxFractionDigits="8"
+              locale="en-US"
+              :maxFractionDigits="20"
             />
             <label for="create-city-longitude">Longitude</label>
           </FloatLabel>

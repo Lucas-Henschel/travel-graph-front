@@ -181,8 +181,8 @@ onMounted(fetchCities);
                 id="create-attraction-latitude"
                 name="latitude"
                 fluid
-                :minFractionDigits="1"
-                :maxFractionDigits="8"
+                locale="en-US"
+                :maxFractionDigits="20"
               />
               <label for="create-attraction-latitude">Latitude</label>
             </FloatLabel>
@@ -194,8 +194,8 @@ onMounted(fetchCities);
                 id="create-attraction-longitude"
                 name="longitude"
                 fluid
-                :minFractionDigits="1"
-                :maxFractionDigits="8"
+                locale="en-US"
+                :maxFractionDigits="20"
               />
               <label for="create-attraction-longitude">Longitude</label>
             </FloatLabel>

@@ -121,8 +121,8 @@ async function handleSubmit(event: FormSubmitEvent) {
               id="edit-city-latitude"
               name="latitude"
               fluid
-              :minFractionDigits="1"
-              :maxFractionDigits="8"
+              locale="en-US"
+              :maxFractionDigits="20"
             />
             <label for="edit-city-latitude">Latitude</label>
           </FloatLabel>
@@ -134,8 +134,8 @@ async function handleSubmit(event: FormSubmitEvent) {
               id="edit-city-longitude"
               name="longitude"
               fluid
-              :minFractionDigits="1"
-              :maxFractionDigits="8"
+              locale="en-US"
+              :maxFractionDigits="20"
             />
             <label for="edit-city-longitude">Longitude</label>
           </FloatLabel>
