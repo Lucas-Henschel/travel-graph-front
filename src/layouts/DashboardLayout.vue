@@ -35,6 +35,11 @@ const navigationSections = [
         icon: "pi pi-map-marker",
         to: { name: "dashboard-attractions" },
       },
+      {
+        label: "Conexões",
+        icon: "pi pi-arrows-h",
+        to: { name: "dashboard-connections" },
+      },
     ],
   },
   {

@@ -4,6 +4,7 @@ import AuthLayout from "@/layouts/AuthLayout.vue";
 import DashboardLayout from "@/layouts/DashboardLayout.vue";
 import AttractionsPage from "@/pages/AttractionsPage.vue";
 import CitiesPage from "@/pages/CitiesPage.vue";
+import ConnectionsPage from "@/pages/ConnectionsPage.vue";
 import DashboardPage from "@/pages/DashboardPage.vue";
 import LoginPage from "@/pages/LoginPage.vue";
 import RoutesPage from "@/pages/RoutesPage.vue";
@@ -59,6 +60,11 @@ const router = createRouter({
           path: "attractions",
           name: "dashboard-attractions",
           component: AttractionsPage,
+        },
+        {
+          path: "connections",
+          name: "dashboard-connections",
+          component: ConnectionsPage,
         },
         {
           path: "routes",
