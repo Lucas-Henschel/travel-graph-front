@@ -12,13 +12,13 @@ interface AuthSession {
 function readSession(): AuthSession | null {
   if (typeof window === "undefined") return null;
 
-  const raw = window.localStorage.getItem(localStorageKeys.ACCESS_TOKEN);
+  const raw = window.localStorage.getItem(localStorageKeys.SESSION);
   if (!raw) return null;
 
   try {
     return JSON.parse(raw) as AuthSession;
   } catch {
-    window.localStorage.removeItem(localStorageKeys.ACCESS_TOKEN);
+    window.localStorage.removeItem(localStorageKeys.SESSION);
     window.localStorage.removeItem(localStorageKeys.ACCESS_TOKEN);
     return null;
   }
@@ -28,13 +28,13 @@ function writeSession(session: AuthSession | null) {
   if (typeof window === "undefined") return;
 
   if (session === null) {
-    window.localStorage.removeItem(localStorageKeys.ACCESS_TOKEN);
+    window.localStorage.removeItem(localStorageKeys.SESSION);
     window.localStorage.removeItem(localStorageKeys.ACCESS_TOKEN);
     return;
   }
 
   window.localStorage.setItem(
-    localStorageKeys.ACCESS_TOKEN,
+    localStorageKeys.SESSION,
     JSON.stringify(session),
   );
   window.localStorage.setItem(localStorageKeys.ACCESS_TOKEN, session.token);
