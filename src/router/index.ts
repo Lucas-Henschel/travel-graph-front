@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from "vue-router";
 
 import AuthLayout from "@/layouts/AuthLayout.vue";
 import DashboardLayout from "@/layouts/DashboardLayout.vue";
+import AttractionsPage from "@/pages/AttractionsPage.vue";
+import CitiesPage from "@/pages/CitiesPage.vue";
 import DashboardPage from "@/pages/DashboardPage.vue";
 import LoginPage from "@/pages/LoginPage.vue";
 import UsersPage from "@/pages/UsersPage.vue";
@@ -46,6 +48,16 @@ const router = createRouter({
           path: "users",
           name: "dashboard-users",
           component: UsersPage,
+        },
+        {
+          path: "cities",
+          name: "dashboard-cities",
+          component: CitiesPage,
+        },
+        {
+          path: "attractions",
+          name: "dashboard-attractions",
+          component: AttractionsPage,
         },
       ],
     },

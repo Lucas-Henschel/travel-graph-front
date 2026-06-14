@@ -3,22 +3,22 @@ import { ref } from "vue";
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import { useNotification } from "@/composables/useNotification";
-import { userService } from "@/services/userService";
-import type { UserResponse } from "@/types/user";
+import { attractionService } from "@/services/attractionService";
+import type { AttractionResponse } from "@/types/attraction";
 
 const visible = defineModel<boolean>("visible", { required: true });
-const props = defineProps<{ user: UserResponse | null }>();
+const props = defineProps<{ attraction: AttractionResponse | null }>();
 const emit = defineEmits<{ deleted: [] }>();
 
 const loading = ref(false);
 const toast = useNotification();
 
 async function handleDelete() {
-  if (!props.user) return;
+  if (!props.attraction) return;
 
   loading.value = true;
 
-  const { error } = await userService.remove(props.user.id);
+  const { error } = await attractionService.remove(props.attraction.id);
 
   if (error) {
     toast.error("Erro ao excluir", error);
@@ -26,7 +26,10 @@ async function handleDelete() {
     return;
   }
 
-  toast.success("Usuário excluído", "O usuário foi excluído com sucesso.");
+  toast.success(
+    "Ponto turístico excluído",
+    "O ponto turístico foi excluído com sucesso.",
+  );
   visible.value = false;
   loading.value = false;
 
@@ -47,8 +50,8 @@ async function handleDelete() {
     }"
   >
     <p class="text-slate-300">
-      Deseja realmente excluir o usuário
-      <strong class="text-white">{{ user?.name }}</strong
+      Deseja realmente excluir o ponto turístico
+      <strong class="text-white">{{ attraction?.name }}</strong
       >?
     </p>
     <template #footer>

@@ -9,13 +9,13 @@ import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
 import InputText from "primevue/inputtext";
 import { useNotification } from "@/composables/useNotification";
-import { userService } from "@/services/userService";
-import type { UserResponse } from "@/types/user";
-import CreateUserDialog from "@/components/users/CreateUserDialog.vue";
-import EditUserDialog from "@/components/users/EditUserDialog.vue";
-import DeleteUserDialog from "@/components/users/DeleteUserDialog.vue";
+import { attractionService } from "@/services/attractionService";
+import type { AttractionResponse } from "@/types/attraction";
+import CreateAttractionDialog from "@/components/attractions/CreateAttractionDialog.vue";
+import EditAttractionDialog from "@/components/attractions/EditAttractionDialog.vue";
+import DeleteAttractionDialog from "@/components/attractions/DeleteAttractionDialog.vue";
 
-const users = ref<UserResponse[]>([]);
+const attractions = ref<AttractionResponse[]>([]);
 const loading = ref(false);
 const toast = useNotification();
 
@@ -26,34 +26,34 @@ const filters = ref({
 const createDialogVisible = ref(false);
 const editDialogVisible = ref(false);
 const deleteDialogVisible = ref(false);
-const selectedUser = ref<UserResponse | null>(null);
+const selectedAttraction = ref<AttractionResponse | null>(null);
 
-async function fetchUsers() {
+async function fetchAttractions() {
   loading.value = true;
 
-  const { data, error } = await userService.findAll();
+  const { data, error } = await attractionService.findAll();
 
   if (!data || error) {
-    users.value = [];
+    attractions.value = [];
     toast.error("Erro ao carregar", error);
   } else {
-    users.value = data;
+    attractions.value = data;
   }
 
   loading.value = false;
 }
 
-function openEditDialog(user: UserResponse) {
-  selectedUser.value = user;
+function openEditDialog(attraction: AttractionResponse) {
+  selectedAttraction.value = attraction;
   editDialogVisible.value = true;
 }
 
-function openDeleteDialog(user: UserResponse) {
-  selectedUser.value = user;
+function openDeleteDialog(attraction: AttractionResponse) {
+  selectedAttraction.value = attraction;
   deleteDialogVisible.value = true;
 }
 
-onMounted(fetchUsers);
+onMounted(fetchAttractions);
 </script>
 
 <template>
@@ -62,7 +62,7 @@ onMounted(fetchUsers);
       class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
     >
       <div>
-        <h1 class="text-2xl font-bold text-white">Usuários</h1>
+        <h1 class="text-2xl font-bold text-white">Pontos Turísticos</h1>
       </div>
     </div>
 
@@ -71,7 +71,7 @@ onMounted(fetchUsers);
         <div class="flex justify-between mb-6">
           <Button
             icon="pi pi-plus"
-            label="Novo usuário"
+            label="Novo ponto turístico"
             size="small"
             @click="createDialogVisible = true"
           />
@@ -80,17 +80,17 @@ onMounted(fetchUsers);
             <InputIcon class="pi pi-search" />
             <InputText
               v-model="filters.global.value"
-              placeholder="Buscar usuários..."
+              placeholder="Buscar pontos turísticos..."
               class="!w-full sm:!w-80"
             />
           </IconField>
         </div>
 
         <DataTable
-          :value="users"
+          :value="attractions"
           :loading="loading"
           v-model:filters="filters"
-          :globalFilterFields="['name', 'email']"
+          :globalFilterFields="['name', 'category', 'city.name']"
           paginator
           :rows="10"
           stripedRows
@@ -118,13 +118,34 @@ onMounted(fetchUsers);
                 <div
                   class="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500/20 text-xs font-medium text-cyan-400"
                 >
-                  {{ data.name.charAt(0).toUpperCase() }}
+                  <i class="pi pi-map-marker text-sm" />
                 </div>
-                <div>
-                  <p class="font-medium text-white">{{ data.name }}</p>
-                  <p class="text-xs text-slate-500">{{ data.email }}</p>
-                </div>
+                <p class="font-medium text-white">{{ data.name }}</p>
               </div>
+            </template>
+          </Column>
+
+          <Column field="category" header="Categoria" sortable>
+            <template #body="{ data }">
+              <span class="text-sm text-slate-400">
+                {{ data.category ?? "—" }}
+              </span>
+            </template>
+          </Column>
+
+          <Column field="city.name" header="Cidade" sortable>
+            <template #body="{ data }">
+              <span class="text-sm text-slate-400">
+                {{ data.city?.name ?? "—" }}
+              </span>
+            </template>
+          </Column>
+
+          <Column field="description" header="Descrição">
+            <template #body="{ data }">
+              <span class="text-sm text-slate-400 line-clamp-1">
+                {{ data.description ?? "—" }}
+              </span>
             </template>
           </Column>
 
@@ -165,29 +186,29 @@ onMounted(fetchUsers);
 
           <template #empty>
             <div class="py-8 text-center text-slate-500">
-              <i class="pi pi-users mb-2 text-2xl" />
-              <p>Nenhum usuário encontrado.</p>
+              <i class="pi pi-map-marker mb-2 text-2xl" />
+              <p>Nenhum ponto turístico encontrado.</p>
             </div>
           </template>
         </DataTable>
       </template>
     </Card>
 
-    <CreateUserDialog
+    <CreateAttractionDialog
       v-model:visible="createDialogVisible"
-      @created="fetchUsers"
+      @created="fetchAttractions"
     />
 
-    <EditUserDialog
+    <EditAttractionDialog
       v-model:visible="editDialogVisible"
-      :user="selectedUser"
-      @updated="fetchUsers"
+      :attraction="selectedAttraction"
+      @updated="fetchAttractions"
     />
 
-    <DeleteUserDialog
+    <DeleteAttractionDialog
       v-model:visible="deleteDialogVisible"
-      :user="selectedUser"
-      @deleted="fetchUsers"
+      :attraction="selectedAttraction"
+      @deleted="fetchAttractions"
     />
   </div>
 </template>

@@ -4,6 +4,9 @@ import PrimeVue from "primevue/config";
 import ToastService from "primevue/toastservice";
 import Aura from "@primeuix/themes/aura";
 
+import VNetworkGraph from "v-network-graph";
+import "v-network-graph/lib/style.css";
+
 import App from "./App.vue";
 import router from "./router";
 import { useAuthStore } from "./stores/auth";
@@ -20,6 +23,7 @@ app.use(PrimeVue, {
   },
 });
 app.use(ToastService);
+app.use(VNetworkGraph);
 
 useAuthStore(pinia).hydrateSession();
 

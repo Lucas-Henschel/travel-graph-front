@@ -5,87 +5,69 @@ import { zodResolver } from "@primevue/forms/resolvers/zod";
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import FloatLabel from "primevue/floatlabel";
+import InputNumber from "primevue/inputnumber";
 import InputText from "primevue/inputtext";
 import Message from "primevue/message";
-import Password from "primevue/password";
 import { z } from "zod";
 
 import { useNotification } from "@/composables/useNotification";
-import { userService } from "@/services/userService";
-import { useAuthStore } from "@/stores/auth";
-import type { UserResponse, UpdateUserRequest } from "@/types/user";
+import { cityService } from "@/services/cityService";
+import type { CityResponse, UpdateCityRequest } from "@/types/city";
 
 const visible = defineModel<boolean>("visible", { required: true });
-const props = defineProps<{ user: UserResponse | null }>();
+const props = defineProps<{ city: CityResponse | null }>();
 const emit = defineEmits<{ updated: [] }>();
 
 const loading = ref(false);
 const toast = useNotification();
-const authStore = useAuthStore();
 
-const editUserSchema = z.object({
-  name: z.string().min(1, "Informe o nome."),
-  email: z
+const editCitySchema = z.object({
+  name: z
     .string()
-    .min(1, "Informe o e-mail.")
-    .email("Informe um e-mail válido."),
-  password: z
-    .string()
-    .refine(
-      (val) => val === "" || val.length >= 8,
-      "A senha deve ter no mínimo 8 caracteres.",
-    ),
+    .min(1, "Informe o nome.")
+    .max(100, "Nome deve ter no máximo 100 caracteres."),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
 });
 
-const initialValues = ref<UpdateUserRequest>({
+const initialValues = ref<UpdateCityRequest>({
   name: "",
-  email: "",
-  password: "",
+  latitude: null,
+  longitude: null,
 });
 
-const resolver = zodResolver(editUserSchema);
+const resolver = zodResolver(editCitySchema);
 
 watch(
-  () => props.user,
-  (user) => {
-    if (user) {
+  () => props.city,
+  (city) => {
+    if (city) {
       initialValues.value = {
-        name: user.name,
-        email: user.email,
-        password: "",
+        name: city.name,
+        latitude: city.latitude,
+        longitude: city.longitude,
       };
     }
   },
 );
 
 async function handleSubmit(event: FormSubmitEvent) {
-  if (!event.valid || !props.user) return;
+  if (!event.valid || !props.city) return;
 
   loading.value = true;
 
-  const updatedUser: UpdateUserRequest = {
-    name: event.values.name,
-    email: event.values.email,
-    password: event.values.password || null,
-  };
+  const { error } = await cityService.update(
+    props.city.id,
+    event.values as UpdateCityRequest,
+  );
 
-  const { data, error } = await userService.update(props.user.id, updatedUser);
-
-  if (!data || error) {
+  if (error) {
     toast.error("Erro ao salvar", error);
     loading.value = false;
     return;
   }
 
-  if (authStore.user?.id === props.user.id && authStore.token) {
-    authStore.setSession(authStore.token, {
-      id: data.id,
-      name: data.name,
-      email: data.email,
-    });
-  }
-
-  toast.success("Usuário atualizado", "O usuário foi atualizado com sucesso.");
+  toast.success("Cidade atualizada", "A cidade foi atualizada com sucesso.");
   visible.value = false;
   loading.value = false;
 
@@ -96,7 +78,7 @@ async function handleSubmit(event: FormSubmitEvent) {
 <template>
   <Dialog
     v-model:visible="visible"
-    header="Editar usuário"
+    header="Editar cidade"
     modal
     :style="{ width: '28rem' }"
     :pt="{
@@ -115,12 +97,12 @@ async function handleSubmit(event: FormSubmitEvent) {
         <div class="space-y-2">
           <FloatLabel variant="in">
             <InputText
-              id="edit-name"
+              id="edit-city-name"
               name="name"
               fluid
               :invalid="$form.name?.invalid"
             />
-            <label for="edit-name">Nome</label>
+            <label for="edit-city-name">Nome</label>
           </FloatLabel>
 
           <Message
@@ -135,46 +117,28 @@ async function handleSubmit(event: FormSubmitEvent) {
 
         <div class="space-y-2">
           <FloatLabel variant="in">
-            <InputText
-              id="edit-email"
-              name="email"
+            <InputNumber
+              id="edit-city-latitude"
+              name="latitude"
               fluid
-              :invalid="$form.email?.invalid"
+              :minFractionDigits="1"
+              :maxFractionDigits="8"
             />
-            <label for="edit-email">E-mail</label>
+            <label for="edit-city-latitude">Latitude</label>
           </FloatLabel>
-
-          <Message
-            v-if="$form.email?.invalid"
-            severity="error"
-            size="small"
-            variant="simple"
-          >
-            {{ $form.email.error?.message }}
-          </Message>
         </div>
 
         <div class="space-y-2">
           <FloatLabel variant="in">
-            <Password
-              id="edit-password"
-              name="password"
-              :feedback="false"
+            <InputNumber
+              id="edit-city-longitude"
+              name="longitude"
               fluid
-              toggleMask
-              :invalid="$form.password?.invalid"
+              :minFractionDigits="1"
+              :maxFractionDigits="8"
             />
-            <label for="edit-password">Senha</label>
+            <label for="edit-city-longitude">Longitude</label>
           </FloatLabel>
-
-          <Message
-            v-if="$form.password?.invalid"
-            severity="error"
-            size="small"
-            variant="simple"
-          >
-            {{ $form.password.error?.message }}
-          </Message>
         </div>
       </div>
 
@@ -185,7 +149,6 @@ async function handleSubmit(event: FormSubmitEvent) {
           text
           @click="visible = false"
         />
-
         <Button label="Salvar" type="submit" :loading="loading" />
       </div>
     </Form>
