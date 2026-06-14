@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
+import { FilterMatchMode } from "@primevue/core/api";
 import Button from "primevue/button";
 import Card from "primevue/card";
 import Column from "primevue/column";
@@ -16,8 +17,11 @@ import DeleteUserDialog from "@/components/users/DeleteUserDialog.vue";
 
 const users = ref<UserResponse[]>([]);
 const loading = ref(false);
-const searchQuery = ref("");
 const toast = useNotification();
+
+const filters = ref({
+  global: { value: null as string | null, matchMode: FilterMatchMode.CONTAINS },
+});
 
 const createDialogVisible = ref(false);
 const editDialogVisible = ref(false);
@@ -26,14 +30,17 @@ const selectedUser = ref<UserResponse | null>(null);
 
 async function fetchUsers() {
   loading.value = true;
-  try {
-    users.value = await userService.findAll();
-  } catch {
+
+  const { data, error } = await userService.findAll();
+
+  if (!data || error) {
     users.value = [];
-    toast.error("Erro ao carregar", "Não foi possível carregar os usuários.");
-  } finally {
-    loading.value = false;
+    toast.error("Erro ao carregar", error);
+  } else {
+    users.value = data;
   }
+
+  loading.value = false;
 }
 
 function openEditDialog(user: UserResponse) {
@@ -56,25 +63,23 @@ onMounted(fetchUsers);
     >
       <div>
         <h1 class="text-2xl font-bold text-white">Usuários</h1>
-        <p class="mt-1 text-sm text-slate-400">
-          Gerencie os usuários do sistema.
-        </p>
       </div>
-      <Button
-        icon="pi pi-plus"
-        label="Novo usuário"
-        size="small"
-        @click="createDialogVisible = true"
-      />
     </div>
 
     <Card class="!bg-slate-900/60 !border !border-white/10 !shadow-none">
       <template #content>
-        <div class="mb-4">
+        <div class="flex justify-between mb-6">
+          <Button
+            icon="pi pi-plus"
+            label="Novo usuário"
+            size="small"
+            @click="createDialogVisible = true"
+          />
+
           <IconField>
             <InputIcon class="pi pi-search" />
             <InputText
-              v-model="searchQuery"
+              v-model="filters.global.value"
               placeholder="Buscar usuários..."
               class="!w-full sm:!w-80"
             />
@@ -84,8 +89,8 @@ onMounted(fetchUsers);
         <DataTable
           :value="users"
           :loading="loading"
+          v-model:filters="filters"
           :globalFilterFields="['name', 'email']"
-          :globalFilter="searchQuery"
           paginator
           :rows="10"
           stripedRows

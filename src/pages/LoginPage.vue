@@ -37,33 +37,27 @@ const initialValues: LoginCredentials = {
 const resolver = zodResolver(loginSchema);
 
 async function handleSubmit(event: FormSubmitEvent) {
+  if (!event.valid) return;
+
   loading.value = true;
 
-  try {
-    const response = await authService.login(
-      event.values as LoginCredentials,
-    );
+  const { data, error } = await authService.login(
+    event.values as LoginCredentials,
+  );
 
-    authStore.setSession(response.token, response.currentUser);
-    toast.success("Bem-vindo!", "Login realizado com sucesso.");
-    await router.push("/dashboard");
-  } catch (err: unknown) {
-    const status =
-      err &&
-      typeof err === "object" &&
-      "response" in err
-        ? (err as { response?: { status?: number } }).response?.status
-        : undefined;
-
-    toast.error(
-      "Erro de autenticação",
-      status === 422
-        ? "E-mail ou senha inválidos."
-        : "Erro ao conectar com o servidor.",
-    );
-  } finally {
+  if (!data || error) {
+    toast.error("Erro de autenticação", error);
     loading.value = false;
+
+    return;
   }
+
+  authStore.setSession(data.token, data.currentUser);
+  toast.success("Bem-vindo!", "Login realizado com sucesso.");
+
+  loading.value = false;
+
+  await router.push("/dashboard");
 }
 </script>
 

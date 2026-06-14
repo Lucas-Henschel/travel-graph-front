@@ -18,16 +18,18 @@ async function handleDelete() {
 
   loading.value = true;
 
-  try {
-    await userService.remove(props.user.id);
-    toast.success("Usuário excluído", "O usuário foi excluído com sucesso.");
-    visible.value = false;
-    emit("deleted");
-  } catch {
-    toast.error("Erro ao excluir", "Não foi possível excluir o usuário.");
-  } finally {
+  const { error } = await userService.remove(props.user.id);
+
+  if (error) {
+    toast.error("Erro ao excluir", error);
     loading.value = false;
+    return;
   }
+
+  toast.success("Usuário excluído", "O usuário foi excluído com sucesso.");
+  visible.value = false;
+  loading.value = false;
+  emit("deleted");
 }
 </script>
 
