@@ -6,6 +6,7 @@ import AttractionsPage from "@/pages/AttractionsPage.vue";
 import CitiesPage from "@/pages/CitiesPage.vue";
 import DashboardPage from "@/pages/DashboardPage.vue";
 import LoginPage from "@/pages/LoginPage.vue";
+import RoutesPage from "@/pages/RoutesPage.vue";
 import UsersPage from "@/pages/UsersPage.vue";
 
 import { registerGuards } from "./guards";
@@ -37,7 +38,7 @@ const router = createRouter({
       children: [
         {
           path: "",
-          redirect: { name: "dashboard-home" },
+          redirect: { name: "dashboard-routes" },
         },
         {
           path: "home",
@@ -58,6 +59,11 @@ const router = createRouter({
           path: "attractions",
           name: "dashboard-attractions",
           component: AttractionsPage,
+        },
+        {
+          path: "routes",
+          name: "dashboard-routes",
+          component: RoutesPage,
         },
       ],
     },
