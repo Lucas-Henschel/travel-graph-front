@@ -181,6 +181,7 @@ onMounted(fetchCities);
                 id="create-attraction-latitude"
                 name="latitude"
                 fluid
+                :useGrouping="false"
                 locale="en-US"
                 :maxFractionDigits="20"
               />
@@ -194,6 +195,7 @@ onMounted(fetchCities);
                 id="create-attraction-longitude"
                 name="longitude"
                 fluid
+                :useGrouping="false"
                 locale="en-US"
                 :maxFractionDigits="20"
               />

@@ -170,6 +170,7 @@ async function handleSubmit(event: FormSubmitEvent) {
                 id="edit-attraction-latitude"
                 name="latitude"
                 fluid
+                :useGrouping="false"
                 locale="en-US"
                 :maxFractionDigits="20"
               />
@@ -183,6 +184,7 @@ async function handleSubmit(event: FormSubmitEvent) {
                 id="edit-attraction-longitude"
                 name="longitude"
                 fluid
+                :useGrouping="false"
                 locale="en-US"
                 :maxFractionDigits="20"
               />
