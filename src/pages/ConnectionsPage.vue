@@ -9,13 +9,12 @@ import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
 import InputText from "primevue/inputtext";
 import { useNotification } from "@/composables/useNotification";
-import { userService } from "@/services/userService";
-import type { UserResponse } from "@/types/user";
-import CreateUserDialog from "@/components/users/CreateUserDialog.vue";
-import EditUserDialog from "@/components/users/EditUserDialog.vue";
-import DeleteUserDialog from "@/components/users/DeleteUserDialog.vue";
+import { connectionService } from "@/services/connectionService";
+import type { ConnectionResponse } from "@/types/connection";
+import CreateConnectionDialog from "@/components/connections/CreateConnectionDialog.vue";
+import DeleteConnectionDialog from "@/components/connections/DeleteConnectionDialog.vue";
 
-const users = ref<UserResponse[]>([]);
+const connections = ref<ConnectionResponse[]>([]);
 const loading = ref(false);
 const toast = useNotification();
 
@@ -24,36 +23,30 @@ const filters = ref({
 });
 
 const createDialogVisible = ref(false);
-const editDialogVisible = ref(false);
 const deleteDialogVisible = ref(false);
-const selectedUser = ref<UserResponse | null>(null);
+const selectedConnection = ref<ConnectionResponse | null>(null);
 
-async function fetchUsers() {
+async function fetchConnections() {
   loading.value = true;
 
-  const { data, error } = await userService.findAll();
+  const { data, error } = await connectionService.findAll();
 
   if (!data || error) {
-    users.value = [];
+    connections.value = [];
     toast.error("Erro ao carregar", error);
   } else {
-    users.value = data;
+    connections.value = data;
   }
 
   loading.value = false;
 }
 
-function openEditDialog(user: UserResponse) {
-  selectedUser.value = user;
-  editDialogVisible.value = true;
-}
-
-function openDeleteDialog(user: UserResponse) {
-  selectedUser.value = user;
+function openDeleteDialog(connection: ConnectionResponse) {
+  selectedConnection.value = connection;
   deleteDialogVisible.value = true;
 }
 
-onMounted(fetchUsers);
+onMounted(fetchConnections);
 </script>
 
 <template>
@@ -62,7 +55,7 @@ onMounted(fetchUsers);
       class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
     >
       <div>
-        <h1 class="text-2xl font-bold text-white">Usuários</h1>
+        <h1 class="text-2xl font-bold text-white">Conexões</h1>
       </div>
     </div>
 
@@ -71,7 +64,7 @@ onMounted(fetchUsers);
         <div class="flex justify-between mb-6">
           <Button
             icon="pi pi-plus"
-            label="Novo usuário"
+            label="Nova conexão"
             size="small"
             @click="createDialogVisible = true"
           />
@@ -80,17 +73,17 @@ onMounted(fetchUsers);
             <InputIcon class="pi pi-search" />
             <InputText
               v-model="filters.global.value"
-              placeholder="Buscar usuários..."
+              placeholder="Buscar conexões..."
               class="!w-full sm:!w-80"
             />
           </IconField>
         </div>
 
         <DataTable
-          :value="users"
+          :value="connections"
           :loading="loading"
           v-model:filters="filters"
-          :globalFilterFields="['name', 'email']"
+          :globalFilterFields="['originCityName', 'destinationCityName']"
           paginator
           :rows="10"
           stripedRows
@@ -112,19 +105,47 @@ onMounted(fetchUsers);
             },
           }"
         >
-          <Column field="name" header="Nome" sortable>
+          <Column field="originCityName" header="Origem" sortable>
             <template #body="{ data }">
               <div class="flex items-center gap-3">
                 <div
                   class="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500/20 text-xs font-medium text-cyan-400"
                 >
-                  {{ data.name.charAt(0).toUpperCase() }}
+                  <i class="pi pi-building text-sm" />
                 </div>
-                <div>
-                  <p class="font-medium text-white">{{ data.name }}</p>
-                  <p class="text-xs text-slate-500">{{ data.email }}</p>
-                </div>
+                <p class="font-medium text-white">{{ data.originCityName }}</p>
               </div>
+            </template>
+          </Column>
+
+          <Column field="destinationCityName" header="Destino" sortable>
+            <template #body="{ data }">
+              <div class="flex items-center gap-3">
+                <div
+                  class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-medium text-emerald-400"
+                >
+                  <i class="pi pi-building text-sm" />
+                </div>
+                <p class="font-medium text-white">
+                  {{ data.destinationCityName }}
+                </p>
+              </div>
+            </template>
+          </Column>
+
+          <Column field="distance" header="Distância" sortable>
+            <template #body="{ data }">
+              <span class="text-sm text-slate-400">
+                {{ data.distance }} km
+              </span>
+            </template>
+          </Column>
+
+          <Column field="time" header="Tempo" sortable>
+            <template #body="{ data }">
+              <span class="text-sm text-slate-400">
+                {{ data.time }} min
+              </span>
             </template>
           </Column>
 
@@ -140,17 +161,9 @@ onMounted(fetchUsers);
             </template>
           </Column>
 
-          <Column header="Ações" :exportable="false" style="min-width: 8rem">
+          <Column header="Ações" :exportable="false" style="min-width: 5rem">
             <template #body="{ data }">
               <div class="flex gap-1">
-                <Button
-                  icon="pi pi-pencil"
-                  severity="secondary"
-                  text
-                  rounded
-                  size="small"
-                  @click="openEditDialog(data)"
-                />
                 <Button
                   icon="pi pi-trash"
                   severity="danger"
@@ -165,29 +178,23 @@ onMounted(fetchUsers);
 
           <template #empty>
             <div class="py-8 text-center text-slate-500">
-              <i class="pi pi-users mb-2 text-2xl" />
-              <p>Nenhum usuário encontrado.</p>
+              <i class="pi pi-arrows-h mb-2 text-2xl" />
+              <p>Nenhuma conexão encontrada.</p>
             </div>
           </template>
         </DataTable>
       </template>
     </Card>
 
-    <CreateUserDialog
+    <CreateConnectionDialog
       v-model:visible="createDialogVisible"
-      @created="fetchUsers"
+      @created="fetchConnections"
     />
 
-    <EditUserDialog
-      v-model:visible="editDialogVisible"
-      :user="selectedUser"
-      @updated="fetchUsers"
-    />
-
-    <DeleteUserDialog
+    <DeleteConnectionDialog
       v-model:visible="deleteDialogVisible"
-      :user="selectedUser"
-      @deleted="fetchUsers"
+      :connection="selectedConnection"
+      @deleted="fetchConnections"
     />
   </div>
 </template>

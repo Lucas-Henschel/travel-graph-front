@@ -16,16 +16,41 @@ const router = useRouter();
 const toast = useNotification();
 const mobileMenuOpen = ref(false);
 
-const navigationItems = [
+const navigationSections = [
   {
-    label: "Dashboard",
-    icon: "pi pi-objects-column",
-    to: { name: "dashboard-home" },
+    title: "Turismo",
+    items: [
+      {
+        label: "Rotas",
+        icon: "pi pi-map",
+        to: { name: "dashboard-routes" },
+      },
+      {
+        label: "Cidades",
+        icon: "pi pi-building",
+        to: { name: "dashboard-cities" },
+      },
+      {
+        label: "Pontos Turísticos",
+        icon: "pi pi-map-marker",
+        to: { name: "dashboard-attractions" },
+      },
+      {
+        label: "Conexões",
+        icon: "pi pi-arrows-h",
+        to: { name: "dashboard-connections" },
+      },
+    ],
   },
   {
-    label: "Usuários",
-    icon: "pi pi-users",
-    to: { name: "dashboard-users" },
+    title: "Administração",
+    items: [
+      {
+        label: "Usuários",
+        icon: "pi pi-users",
+        to: { name: "dashboard-users" },
+      },
+    ],
   },
 ];
 
@@ -56,9 +81,9 @@ function userInitials() {
     <header
       class="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-slate-950/80 px-4 py-3 backdrop-blur-xl lg:hidden"
     >
-      <span class="text-lg font-bold tracking-tight text-white"
-        >TravelGraph</span
-      >
+      <span class="text-lg font-bold tracking-tight text-white">
+        TravelGraph
+      </span>
 
       <Button
         icon="pi pi-bars"
@@ -75,44 +100,60 @@ function userInitials() {
       class="!bg-slate-950 !border-r !border-white/10"
     >
       <template #header>
-        <span class="text-xl font-bold tracking-tight text-white"
-          >TravelGraph</span
-        >
+        <span class="text-xl font-bold tracking-tight text-white">
+          TravelGraph
+        </span>
       </template>
-      <nav class="flex flex-col gap-1">
-        <RouterLink
-          v-for="item in navigationItems"
-          :key="item.label"
-          :class="[
-            'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200',
-            isActiveRoute(item.to.name as string)
-              ? 'bg-cyan-500/15 text-cyan-400'
-              : 'text-slate-400 hover:bg-white/5 hover:text-white',
-          ]"
-          :to="item.to"
-          @click="mobileMenuOpen = false"
-        >
-          <i :class="[item.icon, 'text-base']" />
-          {{ item.label }}
-        </RouterLink>
+
+      <nav class="flex flex-col gap-4">
+        <div v-for="section in navigationSections" :key="section.title">
+          <p
+            class="mb-2 px-4 text-xs font-semibold uppercase tracking-wider text-slate-500"
+          >
+            {{ section.title }}
+          </p>
+
+          <div class="flex flex-col gap-1">
+            <RouterLink
+              v-for="item in section.items"
+              :key="item.label"
+              :class="[
+                'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200',
+                isActiveRoute(item.to.name as string)
+                  ? 'bg-cyan-500/15 text-cyan-400'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white',
+              ]"
+              :to="item.to"
+              @click="mobileMenuOpen = false"
+            >
+              <i :class="[item.icon, 'text-base']" />
+              {{ item.label }}
+            </RouterLink>
+          </div>
+        </div>
       </nav>
+
       <template #footer>
         <Divider />
+
         <div class="flex items-center gap-3 px-2 pb-2">
           <Avatar
             :label="userInitials()"
             shape="circle"
             class="!bg-cyan-500/20 !text-cyan-400 shrink-0"
           />
+
           <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-medium text-white">
               {{ authStore.user?.name }}
             </p>
+
             <p class="truncate text-xs text-slate-400">
               {{ authStore.user?.email }}
             </p>
           </div>
         </div>
+
         <Button
           icon="pi pi-sign-out"
           label="Sair"
@@ -129,26 +170,36 @@ function userInitials() {
         class="hidden lg:flex flex-col fixed inset-y-0 left-0 z-20 w-[17rem] border-r border-white/10 bg-slate-950"
       >
         <div class="px-6 py-6">
-          <span class="text-xl font-bold tracking-tight text-white"
-            >TravelGraph</span
-          >
+          <span class="text-xl font-bold tracking-tight text-white">
+            TravelGraph
+          </span>
         </div>
 
-        <nav class="flex-1 space-y-1 px-3">
-          <RouterLink
-            v-for="item in navigationItems"
-            :key="item.label"
-            :class="[
-              'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200',
-              isActiveRoute(item.to.name as string)
-                ? 'bg-cyan-500/15 text-cyan-400'
-                : 'text-slate-400 hover:bg-white/5 hover:text-white',
-            ]"
-            :to="item.to"
-          >
-            <i :class="[item.icon, 'text-base']" />
-            {{ item.label }}
-          </RouterLink>
+        <nav class="flex-1 space-y-5 px-3">
+          <div v-for="section in navigationSections" :key="section.title">
+            <p
+              class="mb-2 px-4 text-xs font-semibold uppercase tracking-wider text-slate-500"
+            >
+              {{ section.title }}
+            </p>
+
+            <div class="space-y-1">
+              <RouterLink
+                v-for="item in section.items"
+                :key="item.label"
+                :class="[
+                  'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200',
+                  isActiveRoute(item.to.name as string)
+                    ? 'bg-cyan-500/15 text-cyan-400'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white',
+                ]"
+                :to="item.to"
+              >
+                <i :class="[item.icon, 'text-base']" />
+                {{ item.label }}
+              </RouterLink>
+            </div>
+          </div>
         </nav>
 
         <div class="mt-auto border-t border-white/10 px-4 py-4">

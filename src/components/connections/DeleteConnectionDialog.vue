@@ -3,22 +3,22 @@ import { ref } from "vue";
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import { useNotification } from "@/composables/useNotification";
-import { userService } from "@/services/userService";
-import type { UserResponse } from "@/types/user";
+import { connectionService } from "@/services/connectionService";
+import type { ConnectionResponse } from "@/types/connection";
 
 const visible = defineModel<boolean>("visible", { required: true });
-const props = defineProps<{ user: UserResponse | null }>();
+const props = defineProps<{ connection: ConnectionResponse | null }>();
 const emit = defineEmits<{ deleted: [] }>();
 
 const loading = ref(false);
 const toast = useNotification();
 
 async function handleDelete() {
-  if (!props.user) return;
+  if (!props.connection) return;
 
   loading.value = true;
 
-  const { error } = await userService.remove(props.user.id);
+  const { error } = await connectionService.remove(props.connection.id);
 
   if (error) {
     toast.error("Erro ao excluir", error);
@@ -26,7 +26,7 @@ async function handleDelete() {
     return;
   }
 
-  toast.success("Usuário excluído", "O usuário foi excluído com sucesso.");
+  toast.success("Conexão excluída", "A conexão foi excluída com sucesso.");
   visible.value = false;
   loading.value = false;
 
@@ -47,9 +47,13 @@ async function handleDelete() {
     }"
   >
     <p class="text-slate-300">
-      Deseja realmente excluir o usuário
-      <strong class="text-white">{{ user?.name }}</strong
-      >?
+      Deseja realmente excluir a conexão entre
+      <strong class="text-white">{{ connection?.originCityName }}</strong>
+      e
+      <strong class="text-white">
+        {{ connection?.destinationCityName }}
+      </strong>
+      ?
     </p>
     <template #footer>
       <div class="flex justify-end gap-2">

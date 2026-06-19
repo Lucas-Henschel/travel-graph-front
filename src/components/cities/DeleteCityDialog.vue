@@ -3,22 +3,22 @@ import { ref } from "vue";
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import { useNotification } from "@/composables/useNotification";
-import { userService } from "@/services/userService";
-import type { UserResponse } from "@/types/user";
+import { cityService } from "@/services/cityService";
+import type { CityResponse } from "@/types/city";
 
 const visible = defineModel<boolean>("visible", { required: true });
-const props = defineProps<{ user: UserResponse | null }>();
+const props = defineProps<{ city: CityResponse | null }>();
 const emit = defineEmits<{ deleted: [] }>();
 
 const loading = ref(false);
 const toast = useNotification();
 
 async function handleDelete() {
-  if (!props.user) return;
+  if (!props.city) return;
 
   loading.value = true;
 
-  const { error } = await userService.remove(props.user.id);
+  const { error } = await cityService.remove(props.city.id);
 
   if (error) {
     toast.error("Erro ao excluir", error);
@@ -26,7 +26,7 @@ async function handleDelete() {
     return;
   }
 
-  toast.success("Usuário excluído", "O usuário foi excluído com sucesso.");
+  toast.success("Cidade excluída", "A cidade foi excluída com sucesso.");
   visible.value = false;
   loading.value = false;
 
@@ -47,8 +47,8 @@ async function handleDelete() {
     }"
   >
     <p class="text-slate-300">
-      Deseja realmente excluir o usuário
-      <strong class="text-white">{{ user?.name }}</strong
+      Deseja realmente excluir a cidade
+      <strong class="text-white">{{ city?.name }}</strong
       >?
     </p>
     <template #footer>
