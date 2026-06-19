@@ -1,34 +1,26 @@
-export interface Cidade {
+export interface Attraction {
   id: number;
-  nome: string;
+  name: string;
+  description: string;
+  category: string;
+}
+
+export interface CityRoute {
+  id: number;
+  name: string;
   latitude: number;
   longitude: number;
+  attractions: Attraction[];
 }
 
-export interface PontoTuristico {
-  id: number;
-  nome: string;
-  descricao: string;
-  categoria: string;
-  cidadeId: number;
+export interface RouteResponse {
+  cities: CityRoute[];
+  totalDistance: number;
+  totalTime: number;
 }
 
-export interface Conexao {
-  cidadeOrigemId: number;
-  cidadeDestinoId: number;
-  distancia: number;
-  tempo: number;
-}
-
-export interface CidadeRota {
-  nome: string;
-  latitude: number;
-  longitude: number;
-  pontosTuristicos: PontoTuristico[];
-}
-
-export interface RotaResponse {
-  cidades: CidadeRota[];
-  distanciaTotal: number;
-  tempoTotal: number;
+export interface CalculateRouteRequest {
+  startCityId: number;
+  endCityId: number;
+  criteria: "distance" | "time";
 }

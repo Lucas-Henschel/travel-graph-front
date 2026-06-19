@@ -1,25 +1,36 @@
+import api, { extractErrorMessage } from "./api";
 import type { ServiceResult } from "@/types/api";
-import type { Cidade, RotaResponse } from "@/types/route";
-import { cidadesMock, calcularRotaMock } from "@/mocks/routesMock";
+import type { CityResponse } from "@/types/city";
+import type {
+  RouteResponse,
+  CalculateRouteRequest,
+} from "@/types/route";
 
 export const routeService = {
-  async listarCidades(): Promise<ServiceResult<Cidade[]>> {
-    // TODO: swap for api.get<Cidade[]>("/cidades") when backend is ready
-    return { data: cidadesMock, error: null };
+  async listCities(): Promise<ServiceResult<CityResponse[]>> {
+    try {
+      const { data } = await api.get<CityResponse[]>("/cities");
+      return { data, error: null };
+    } catch (err) {
+      return { data: null, error: extractErrorMessage(err) };
+    }
   },
 
-  async calcularRota(
-    origemId: number,
-    destinoId: number,
-    criterio: "distancia" | "tempo",
-  ): Promise<ServiceResult<RotaResponse>> {
-    // TODO: swap for api.get<RotaResponse>(`/rotas?origem=${origemId}&destino=${destinoId}&criterio=${criterio}`) when backend is ready
-    const result = calcularRotaMock(origemId, destinoId, criterio);
-
-    if (!result) {
-      return { data: null, error: "Nenhuma rota encontrada entre as cidades selecionadas." };
+  async calculateRoute(
+    startCityId: number,
+    endCityId: number,
+    criteria: "distance" | "time",
+  ): Promise<ServiceResult<RouteResponse>> {
+    try {
+      const payload: CalculateRouteRequest = {
+        startCityId,
+        endCityId,
+        criteria,
+      };
+      const { data } = await api.post<RouteResponse>("/routes", payload);
+      return { data, error: null };
+    } catch (err) {
+      return { data: null, error: extractErrorMessage(err) };
     }
-
-    return { data: result, error: null };
   },
 };

@@ -16,23 +16,26 @@ import Button from "primevue/button";
 
 import { useNotification } from "@/composables/useNotification";
 import { routeService } from "@/services/routeService";
+import { connectionService } from "@/services/connectionService";
 import { useAuthStore } from "@/stores/auth";
-import { conexoesMock } from "@/mocks/routesMock";
-import type { Cidade, RotaResponse } from "@/types/route";
+import type { CityResponse } from "@/types/city";
+import type { ConnectionResponse } from "@/types/connection";
+import type { RouteResponse } from "@/types/route";
 
 const toast = useNotification();
 const authStore = useAuthStore();
 
-const cidades = ref<Cidade[]>([]);
+const cidades = ref<CityResponse[]>([]);
+const connections = ref<ConnectionResponse[]>([]);
 const origemId = ref<number | null>(null);
 const destinoId = ref<number | null>(null);
-const criterio = ref<"distancia" | "tempo">("distancia");
+const criterio = ref<"distance" | "time">("distance");
 const criterioOptions = [
-  { label: "Distância", value: "distancia" },
-  { label: "Tempo", value: "tempo" },
+  { label: "Distância", value: "distance" },
+  { label: "Tempo", value: "time" },
 ];
 const loading = ref(false);
-const rota = ref<RotaResponse | null>(null);
+const rota = ref<RouteResponse | null>(null);
 
 const viewMode = ref<"mapa" | "grafo">("mapa");
 const viewModeOptions = [
@@ -53,7 +56,7 @@ const canCalculate = computed(
 
 const polylineLatLngs = computed(() => {
   if (!rota.value) return [];
-  return rota.value.cidades.map(
+  return rota.value.cities.map(
     (c) => [c.latitude, c.longitude] as [number, number],
   );
 });
@@ -94,10 +97,7 @@ function toggleCityExpand(index: number) {
 
 const routeCityIds = computed(() => {
   if (!rota.value) return [];
-  return rota.value.cidades.map((c) => {
-    const city = cidades.value.find((ci) => ci.nome === c.nome);
-    return city?.id ?? -1;
-  });
+  return rota.value.cities.map((c) => c.id);
 });
 
 const graphNodes = computed(() => {
@@ -106,15 +106,13 @@ const graphNodes = computed(() => {
     string,
     { name: string; type: "cidade" | "ponto"; categoria?: string }
   > = {};
-  for (const cidade of rota.value.cidades) {
-    const cityData = cidades.value.find((c) => c.nome === cidade.nome);
-    if (!cityData) continue;
-    nodes[`c${cityData.id}`] = { name: cidade.nome, type: "cidade" };
-    for (const ponto of cidade.pontosTuristicos) {
-      nodes[`p${ponto.id}`] = {
-        name: ponto.nome,
+  for (const city of rota.value.cities) {
+    nodes[`c${city.id}`] = { name: city.name, type: "cidade" };
+    for (const attraction of city.attractions) {
+      nodes[`p${attraction.id}`] = {
+        name: attraction.name,
         type: "ponto",
-        categoria: ponto.categoria,
+        categoria: attraction.category,
       };
     }
   }
@@ -130,15 +128,15 @@ const graphEdges = computed(() => {
   const ids = routeCityIds.value;
 
   for (let i = 0; i < ids.length - 1; i++) {
-    const con = conexoesMock.find(
+    const con = connections.value.find(
       (c) =>
-        (c.cidadeOrigemId === ids[i] && c.cidadeDestinoId === ids[i + 1]) ||
-        (c.cidadeOrigemId === ids[i + 1] && c.cidadeDestinoId === ids[i]),
+        (c.originCityId === ids[i] && c.destinationCityId === ids[i + 1]) ||
+        (c.originCityId === ids[i + 1] && c.destinationCityId === ids[i]),
     );
     const label = con
-      ? criterio.value === "distancia"
-        ? `${con.distancia} km`
-        : `${con.tempo}h`
+      ? criterio.value === "distance"
+        ? `${con.distance} km`
+        : `${con.time}h`
       : "";
     edges[`r${ids[i]}-${ids[i + 1]}`] = {
       source: `c${ids[i]}`,
@@ -148,13 +146,11 @@ const graphEdges = computed(() => {
     };
   }
 
-  for (const cidade of rota.value.cidades) {
-    const cityData = cidades.value.find((c) => c.nome === cidade.nome);
-    if (!cityData) continue;
-    for (const ponto of cidade.pontosTuristicos) {
-      edges[`pt${ponto.id}`] = {
-        source: `c${cityData.id}`,
-        target: `p${ponto.id}`,
+  for (const city of rota.value.cities) {
+    for (const attraction of city.attractions) {
+      edges[`pt${attraction.id}`] = {
+        source: `c${city.id}`,
+        target: `p${attraction.id}`,
         type: "ponto",
       };
     }
@@ -165,9 +161,7 @@ const graphEdges = computed(() => {
 
 const graphLayouts = computed(() => {
   if (!rota.value) return { nodes: {} };
-  const routeCities = rota.value.cidades
-    .map((c) => cidades.value.find((ci) => ci.nome === c.nome))
-    .filter(Boolean) as Cidade[];
+  const routeCities = rota.value.cities;
 
   if (!routeCities.length) return { nodes: {} };
 
@@ -184,20 +178,17 @@ const graphLayouts = computed(() => {
 
   const nodes: Record<string, { x: number; y: number }> = {};
 
-  for (const cidade of rota.value.cidades) {
-    const cityData = cidades.value.find((c) => c.nome === cidade.nome);
-    if (!cityData) continue;
+  for (const city of rota.value.cities) {
+    const cx = ((city.longitude - minLng) / rangeLng) * sizeX;
+    const cy = ((maxLat - city.latitude) / rangeLat) * sizeY;
+    nodes[`c${city.id}`] = { x: cx, y: cy };
 
-    const cx = ((cityData.longitude - minLng) / rangeLng) * sizeX;
-    const cy = ((maxLat - cityData.latitude) / rangeLat) * sizeY;
-    nodes[`c${cityData.id}`] = { x: cx, y: cy };
-
-    const pontos = cidade.pontosTuristicos;
-    const angleStep = pontos.length > 1 ? Math.PI / (pontos.length + 1) : 0;
+    const attractions = city.attractions;
+    const angleStep = attractions.length > 1 ? Math.PI / (attractions.length + 1) : 0;
     const radius = 100;
-    for (let i = 0; i < pontos.length; i++) {
+    for (let i = 0; i < attractions.length; i++) {
       const angle = -Math.PI / 2 + angleStep * (i + 1);
-      nodes[`p${pontos[i].id}`] = {
+      nodes[`p${attractions[i].id}`] = {
         x: cx + Math.cos(angle) * radius,
         y: cy + Math.sin(angle) * radius,
       };
@@ -218,9 +209,9 @@ const routeEdgeIds = computed(() => {
 const pontoEdgeIds = computed(() => {
   if (!rota.value) return new Set<string>();
   const keys = new Set<string>();
-  for (const cidade of rota.value.cidades) {
-    for (const ponto of cidade.pontosTuristicos) {
-      keys.add(`pt${ponto.id}`);
+  for (const city of rota.value.cities) {
+    for (const attraction of city.attractions) {
+      keys.add(`pt${attraction.id}`);
     }
   }
   return keys;
@@ -287,14 +278,23 @@ const graphConfigs = reactive(
 // --- Data fetching ---
 
 async function fetchCidades() {
-  const { data, error } = await routeService.listarCidades();
+  const [citiesResult, connectionsResult] = await Promise.all([
+    routeService.listCities(),
+    connectionService.findAll(),
+  ]);
 
-  if (!data || error) {
-    toast.error("Erro ao carregar cidades", error);
+  if (!citiesResult.data || citiesResult.error) {
+    toast.error("Erro ao carregar cidades", citiesResult.error);
     return;
   }
 
-  cidades.value = data;
+  if (!connectionsResult.data || connectionsResult.error) {
+    toast.error("Erro ao carregar conexões", connectionsResult.error);
+    return;
+  }
+
+  cidades.value = citiesResult.data;
+  connections.value = connectionsResult.data;
 }
 
 async function calcular() {
@@ -304,7 +304,7 @@ async function calcular() {
   rota.value = null;
   expandedCities.value.clear();
 
-  const { data, error } = await routeService.calcularRota(
+  const { data, error } = await routeService.calculateRoute(
     origemId.value!,
     destinoId.value!,
     criterio.value,
@@ -319,9 +319,9 @@ async function calcular() {
   rota.value = data;
   loading.value = false;
 
-  if (viewMode.value === "mapa" && data.cidades.length > 0) {
+  if (viewMode.value === "mapa" && data.cities.length > 0) {
     const bounds = L.latLngBounds(
-      data.cidades.map((c) => [c.latitude, c.longitude] as [number, number]),
+      data.cities.map((c) => [c.latitude, c.longitude] as [number, number]),
     );
     mapRef.value?.leafletObject?.fitBounds(bounds, { padding: [50, 50] });
   }
@@ -359,33 +359,33 @@ onMounted(fetchCidades);
         />
 
         <LMarker
-          v-for="(cidade, index) in rota.cidades"
+          v-for="(city, index) in rota.cities"
           :key="index"
-          :lat-lng="[cidade.latitude, cidade.longitude]"
-          :icon="createIcon(markerColor(index, rota.cidades.length))"
+          :lat-lng="[city.latitude, city.longitude]"
+          :icon="createIcon(markerColor(index, rota.cities.length))"
         >
-          <LTooltip>{{ cidade.nome }}</LTooltip>
+          <LTooltip>{{ city.name }}</LTooltip>
           <LPopup>
             <div class="min-w-[200px]">
               <h3 class="text-sm font-bold text-white mb-1">
-                {{ cidade.nome }}
+                {{ city.name }}
               </h3>
               <p
-                v-if="cidade.pontosTuristicos.length"
+                v-if="city.attractions.length"
                 class="text-xs text-slate-400 mb-2"
               >
-                {{ cidade.pontosTuristicos.length }} ponto(s) turístico(s)
+                {{ city.attractions.length }} ponto(s) turístico(s)
               </p>
               <ul class="space-y-1">
                 <li
-                  v-for="ponto in cidade.pontosTuristicos"
-                  :key="ponto.id"
+                  v-for="attraction in city.attractions"
+                  :key="attraction.id"
                   class="text-xs"
                 >
                   <span class="font-medium text-cyan-400">{{
-                    ponto.nome
+                    attraction.name
                   }}</span>
-                  <span class="text-slate-400"> - {{ ponto.descricao }}</span>
+                  <span class="text-slate-400"> - {{ attraction.description }}</span>
                 </li>
               </ul>
             </div>
@@ -505,7 +505,7 @@ onMounted(fetchCidades);
         <Dropdown
           v-model="origemId"
           :options="cidades"
-          optionLabel="nome"
+          optionLabel="name"
           optionValue="id"
           placeholder="Cidade de origem"
           filter
@@ -515,7 +515,7 @@ onMounted(fetchCidades);
         <Dropdown
           v-model="destinoId"
           :options="cidades"
-          optionLabel="nome"
+          optionLabel="name"
           optionValue="id"
           placeholder="Cidade de destino"
           filter
@@ -567,14 +567,14 @@ onMounted(fetchCidades);
           <div class="flex-1 rounded-xl bg-slate-800/60 p-3 text-center">
             <p class="text-xs text-slate-400">Distância</p>
             <p class="text-lg font-bold text-cyan-400">
-              {{ rota.distanciaTotal.toLocaleString("pt-BR") }} km
+              {{ rota.totalDistance.toLocaleString("pt-BR") }} km
             </p>
           </div>
           <div class="flex-1 rounded-xl bg-slate-800/60 p-3 text-center">
             <p class="text-xs text-slate-400">Tempo</p>
             <p class="text-lg font-bold text-cyan-400">
               {{
-                rota.tempoTotal.toLocaleString("pt-BR", {
+                rota.totalTime.toLocaleString("pt-BR", {
                   maximumFractionDigits: 1,
                 })
               }}h
@@ -587,7 +587,7 @@ onMounted(fetchCidades);
         </h3>
         <ul class="space-y-1">
           <li
-            v-for="(cidade, index) in rota.cidades"
+            v-for="(city, index) in rota.cities"
             :key="index"
             class="rounded-lg"
           >
@@ -599,13 +599,13 @@ onMounted(fetchCidades);
                 class="h-2 w-2 shrink-0 rounded-full"
                 :class="{
                   'bg-green-400': index === 0,
-                  'bg-red-400': index === rota!.cidades.length - 1,
-                  'bg-blue-400': index > 0 && index < rota!.cidades.length - 1,
+                  'bg-red-400': index === rota!.cities.length - 1,
+                  'bg-blue-400': index > 0 && index < rota!.cities.length - 1,
                 }"
               />
-              <span class="flex-1 text-white">{{ cidade.nome }}</span>
+              <span class="flex-1 text-white">{{ city.name }}</span>
               <i
-                v-if="cidade.pontosTuristicos.length"
+                v-if="city.attractions.length"
                 class="pi text-xs text-slate-400"
                 :class="
                   expandedCities.has(index)
@@ -615,21 +615,21 @@ onMounted(fetchCidades);
               />
             </button>
             <div
-              v-if="expandedCities.has(index) && cidade.pontosTuristicos.length"
+              v-if="expandedCities.has(index) && city.attractions.length"
               class="ml-4 mt-1 mb-1 space-y-1 border-l border-white/10 pl-3"
             >
               <div
-                v-for="ponto in cidade.pontosTuristicos"
-                :key="ponto.id"
+                v-for="attraction in city.attractions"
+                :key="attraction.id"
                 class="text-xs"
               >
-                <span class="font-medium text-cyan-400">{{ ponto.nome }}</span>
+                <span class="font-medium text-cyan-400">{{ attraction.name }}</span>
                 <span
                   class="ml-1 rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400"
                 >
-                  {{ ponto.categoria }}
+                  {{ attraction.category }}
                 </span>
-                <p class="mt-0.5 text-slate-500">{{ ponto.descricao }}</p>
+                <p class="mt-0.5 text-slate-500">{{ attraction.description }}</p>
               </div>
             </div>
           </li>
