@@ -1,7 +1,7 @@
 import type { CityResponse } from "./city";
 
 export interface AttractionResponse {
-  id: number;
+  id: string;
   name: string;
   description: string | null;
   category: string | null;
@@ -18,7 +18,7 @@ export interface CreateAttractionRequest {
   category: string | null;
   latitude: number | null;
   longitude: number | null;
-  cityId: number;
+  cityId: string;
 }
 
 export interface UpdateAttractionRequest {

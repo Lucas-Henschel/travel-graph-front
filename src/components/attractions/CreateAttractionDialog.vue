@@ -38,7 +38,7 @@ const createAttractionSchema = z.object({
   category: z.string().max(50).nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
-  cityId: z.number({ required_error: "Selecione a cidade." }),
+  cityId: z.string({ required_error: "Selecione a cidade." }),
 });
 
 const initialValues = {

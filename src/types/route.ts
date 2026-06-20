@@ -1,12 +1,12 @@
 export interface Attraction {
-  id: number;
+  id: string;
   name: string;
   description: string;
   category: string;
 }
 
 export interface CityRoute {
-  id: number;
+  id: string;
   name: string;
   latitude: number;
   longitude: number;
@@ -20,7 +20,7 @@ export interface RouteResponse {
 }
 
 export interface CalculateRouteRequest {
-  startCityId: number;
-  endCityId: number;
+  startCityId: string;
+  endCityId: string;
   criteria: "distance" | "time";
 }

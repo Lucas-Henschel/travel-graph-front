@@ -17,8 +17,8 @@ export const routeService = {
   },
 
   async calculateRoute(
-    startCityId: number,
-    endCityId: number,
+    startCityId: string,
+    endCityId: string,
     criteria: "distance" | "time",
   ): Promise<ServiceResult<RouteResponse>> {
     try {

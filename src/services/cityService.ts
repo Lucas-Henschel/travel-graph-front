@@ -16,7 +16,7 @@ export const cityService = {
     }
   },
 
-  async findById(id: number): Promise<ServiceResult<CityResponse>> {
+  async findById(id: string): Promise<ServiceResult<CityResponse>> {
     try {
       const { data } = await api.get<CityResponse>(`/cities/${id}`);
       return { data, error: null };
@@ -37,7 +37,7 @@ export const cityService = {
   },
 
   async update(
-    id: number,
+    id: string,
     payload: UpdateCityRequest,
   ): Promise<ServiceResult<CityResponse>> {
     try {
@@ -48,7 +48,7 @@ export const cityService = {
     }
   },
 
-  async remove(id: number): Promise<ServiceResult<void>> {
+  async remove(id: string): Promise<ServiceResult<void>> {
     try {
       await api.delete(`/cities/${id}`);
       return { data: undefined as void, error: null };

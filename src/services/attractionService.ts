@@ -16,7 +16,7 @@ export const attractionService = {
     }
   },
 
-  async findById(id: number): Promise<ServiceResult<AttractionResponse>> {
+  async findById(id: string): Promise<ServiceResult<AttractionResponse>> {
     try {
       const { data } = await api.get<AttractionResponse>(`/attractions/${id}`);
       return { data, error: null };
@@ -40,7 +40,7 @@ export const attractionService = {
   },
 
   async update(
-    id: number,
+    id: string,
     payload: UpdateAttractionRequest,
   ): Promise<ServiceResult<AttractionResponse>> {
     try {
@@ -54,7 +54,7 @@ export const attractionService = {
     }
   },
 
-  async remove(id: number): Promise<ServiceResult<void>> {
+  async remove(id: string): Promise<ServiceResult<void>> {
     try {
       await api.delete(`/attractions/${id}`);
       return { data: undefined as void, error: null };
