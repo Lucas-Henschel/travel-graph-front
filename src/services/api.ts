@@ -1,4 +1,6 @@
 import { localStorageKeys } from "@/config/localStorageKeys";
+import router from "@/router";
+import { useAuthStore } from "@/stores/auth";
 import type { StandardError } from "@/types/api";
 import axios, { type AxiosError } from "axios";
 
@@ -22,8 +24,11 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem(localStorageKeys.SESSION);
-      localStorage.removeItem(localStorageKeys.ACCESS_TOKEN);
+      useAuthStore().clearSession();
+
+      if (router.currentRoute.value.name !== "login") {
+        router.push({ name: "login" });
+      }
     }
 
     return Promise.reject(error);
