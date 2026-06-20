@@ -1,17 +1,27 @@
 export interface ConnectionResponse {
-  id: number;
-  originCityId: number;
-  destinationCityId: number;
+  id: string;
+  originCityId: string;
+  destinationCityId: string;
   originCityName: string;
   destinationCityName: string;
   distance: number;
+  /** Duration in decimal hours (e.g. 1.5 = 1h30min). */
   time: number;
   createdAt: string;
 }
 
 export interface CreateConnectionRequest {
-  originCityId: number;
-  destinationCityId: number;
+  originCityId: string;
+  destinationCityId: string;
   distance: number;
+  /** Duration in decimal hours (e.g. 1.5 = 1h30min). */
+  time: number;
+}
+
+export interface UpdateConnectionRequest {
+  originCityId: string;
+  destinationCityId: string;
+  distance: number;
+  /** Duration in decimal hours (e.g. 1.5 = 1h30min). */
   time: number;
 }

@@ -11,8 +11,10 @@ import InputText from "primevue/inputtext";
 import { useNotification } from "@/composables/useNotification";
 import { connectionService } from "@/services/connectionService";
 import type { ConnectionResponse } from "@/types/connection";
+import { formatHours } from "@/utils/time";
 import CreateConnectionDialog from "@/components/connections/CreateConnectionDialog.vue";
 import DeleteConnectionDialog from "@/components/connections/DeleteConnectionDialog.vue";
+import EditConnectionDialog from "@/components/connections/EditConnectionDialog.vue";
 
 const connections = ref<ConnectionResponse[]>([]);
 const loading = ref(false);
@@ -23,6 +25,7 @@ const filters = ref({
 });
 
 const createDialogVisible = ref(false);
+const editDialogVisible = ref(false);
 const deleteDialogVisible = ref(false);
 const selectedConnection = ref<ConnectionResponse | null>(null);
 
@@ -39,6 +42,11 @@ async function fetchConnections() {
   }
 
   loading.value = false;
+}
+
+function openEditDialog(connection: ConnectionResponse) {
+  selectedConnection.value = connection;
+  editDialogVisible.value = true;
 }
 
 function openDeleteDialog(connection: ConnectionResponse) {
@@ -144,7 +152,7 @@ onMounted(fetchConnections);
           <Column field="time" header="Tempo" sortable>
             <template #body="{ data }">
               <span class="text-sm text-slate-400">
-                {{ data.time }} min
+                {{ formatHours(data.time) }}
               </span>
             </template>
           </Column>
@@ -164,6 +172,14 @@ onMounted(fetchConnections);
           <Column header="Ações" :exportable="false" style="min-width: 5rem">
             <template #body="{ data }">
               <div class="flex gap-1">
+                <Button
+                  icon="pi pi-pencil"
+                  severity="info"
+                  text
+                  rounded
+                  size="small"
+                  @click="openEditDialog(data)"
+                />
                 <Button
                   icon="pi pi-trash"
                   severity="danger"
@@ -189,6 +205,12 @@ onMounted(fetchConnections);
     <CreateConnectionDialog
       v-model:visible="createDialogVisible"
       @created="fetchConnections"
+    />
+
+    <EditConnectionDialog
+      v-model:visible="editDialogVisible"
+      :connection="selectedConnection"
+      @updated="fetchConnections"
     />
 
     <DeleteConnectionDialog

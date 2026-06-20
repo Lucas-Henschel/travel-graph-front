@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, reactive } from "vue";
+import { ref, onMounted, computed, reactive, nextTick } from "vue";
 import {
   LMap,
   LTileLayer,
@@ -21,14 +21,15 @@ import { useAuthStore } from "@/stores/auth";
 import type { CityResponse } from "@/types/city";
 import type { ConnectionResponse } from "@/types/connection";
 import type { RouteResponse } from "@/types/route";
+import { formatHours } from "@/utils/time";
 
 const toast = useNotification();
 const authStore = useAuthStore();
 
 const cidades = ref<CityResponse[]>([]);
 const connections = ref<ConnectionResponse[]>([]);
-const origemId = ref<number | null>(null);
-const destinoId = ref<number | null>(null);
+const origemId = ref<string | null>(null);
+const destinoId = ref<string | null>(null);
 const criterio = ref<"distance" | "time">("distance");
 const criterioOptions = [
   { label: "Distância", value: "distance" },
@@ -80,6 +81,65 @@ function createIcon(color: string) {
     iconSize: [24, 36],
     iconAnchor: [12, 36],
     popupAnchor: [0, -36],
+  });
+}
+
+const routeTotals = computed(() => {
+  if (!rota.value) return { distance: 0, time: 0 };
+  const cities = rota.value.cities;
+  let distance = 0;
+  let time = 0;
+  for (let i = 0; i < cities.length - 1; i++) {
+    const a = cities[i];
+    const b = cities[i + 1];
+    const con = connections.value.find(
+      (c) =>
+        (c.originCityId === a.id && c.destinationCityId === b.id) ||
+        (c.originCityId === b.id && c.destinationCityId === a.id),
+    );
+    if (!con) continue;
+    distance += con.distance;
+    time += con.time;
+  }
+  return { distance, time };
+});
+
+const segmentLabels = computed(() => {
+  if (!rota.value) return [];
+  const cities = rota.value.cities;
+  const labels: {
+    lat: number;
+    lng: number;
+    text: string;
+  }[] = [];
+  for (let i = 0; i < cities.length - 1; i++) {
+    const a = cities[i];
+    const b = cities[i + 1];
+    const con = connections.value.find(
+      (c) =>
+        (c.originCityId === a.id && c.destinationCityId === b.id) ||
+        (c.originCityId === b.id && c.destinationCityId === a.id),
+    );
+    if (!con) continue;
+    const text =
+      criterio.value === "distance"
+        ? `${con.distance} km`
+        : formatHours(con.time);
+    labels.push({
+      lat: (a.latitude + b.latitude) / 2,
+      lng: (a.longitude + b.longitude) / 2,
+      text,
+    });
+  }
+  return labels;
+});
+
+function createLabelIcon(text: string) {
+  return L.divIcon({
+    html: `<div class="route-edge-label">${text}</div>`,
+    className: "route-edge-label-wrapper",
+    iconSize: [60, 22],
+    iconAnchor: [30, 11],
   });
 }
 
@@ -136,7 +196,7 @@ const graphEdges = computed(() => {
     const label = con
       ? criterio.value === "distance"
         ? `${con.distance} km`
-        : `${con.time}h`
+        : formatHours(con.time)
       : "";
     edges[`r${ids[i]}-${ids[i + 1]}`] = {
       source: `c${ids[i]}`,
@@ -319,11 +379,18 @@ async function calcular() {
   rota.value = data;
   loading.value = false;
 
-  if (viewMode.value === "mapa" && data.cities.length > 0) {
-    const bounds = L.latLngBounds(
-      data.cities.map((c) => [c.latitude, c.longitude] as [number, number]),
-    );
-    mapRef.value?.leafletObject?.fitBounds(bounds, { padding: [50, 50] });
+  if (viewMode.value === "mapa") {
+    const points = data.cities
+      .map((c) => [c.latitude, c.longitude] as [number, number])
+      .filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
+
+    if (points.length > 0) {
+      await nextTick();
+      const map = mapRef.value?.leafletObject;
+      if (map) {
+        map.fitBounds(points, { padding: [50, 50] });
+      }
+    }
   }
 }
 
@@ -356,6 +423,14 @@ onMounted(fetchCidades);
           :color="'#22d3ee'"
           :weight="4"
           :opacity="0.8"
+        />
+
+        <LMarker
+          v-for="(seg, i) in segmentLabels"
+          :key="`seg-${i}`"
+          :lat-lng="[seg.lat, seg.lng]"
+          :icon="createLabelIcon(seg.text)"
+          :interactive="false"
         />
 
         <LMarker
@@ -464,16 +539,13 @@ onMounted(fetchCidades);
         </template>
 
         <template #edge-label="{ edge, ...slotProps }">
-          <text
+          <v-edge-label
             v-if="edge.label"
             v-bind="slotProps"
-            fill="#94a3b8"
-            font-size="11"
-            text-anchor="middle"
-            dominant-baseline="central"
-          >
-            {{ edge.label }}
-          </text>
+            :text="edge.label"
+            align="center"
+            vertical-align="above"
+          />
         </template>
 
         <template #override-edge="{ edge, edgeId, scale, ...slotProps }">
@@ -567,17 +639,13 @@ onMounted(fetchCidades);
           <div class="flex-1 rounded-xl bg-slate-800/60 p-3 text-center">
             <p class="text-xs text-slate-400">Distância</p>
             <p class="text-lg font-bold text-cyan-400">
-              {{ rota.totalDistance.toLocaleString("pt-BR") }} km
+              {{ routeTotals.distance.toLocaleString("pt-BR") }} km
             </p>
           </div>
           <div class="flex-1 rounded-xl bg-slate-800/60 p-3 text-center">
             <p class="text-xs text-slate-400">Tempo</p>
             <p class="text-lg font-bold text-cyan-400">
-              {{
-                rota.totalTime.toLocaleString("pt-BR", {
-                  maximumFractionDigits: 1,
-                })
-              }}h
+              {{ formatHours(routeTotals.time) }}
             </p>
           </div>
         </div>
@@ -638,3 +706,23 @@ onMounted(fetchCidades);
     </div>
   </div>
 </template>
+
+<style>
+.route-edge-label-wrapper {
+  background: transparent;
+  border: none;
+}
+.route-edge-label {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  color: #e0f2fe;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+</style>

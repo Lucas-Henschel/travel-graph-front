@@ -149,18 +149,6 @@ onMounted(fetchAttractions);
             </template>
           </Column>
 
-          <Column field="createdAt" header="Criado em" sortable>
-            <template #body="{ data }">
-              <span class="text-sm text-slate-400">
-                {{
-                  data.createdAt
-                    ? new Date(data.createdAt).toLocaleDateString("pt-BR")
-                    : "—"
-                }}
-              </span>
-            </template>
-          </Column>
-
           <Column header="Ações" :exportable="false" style="min-width: 8rem">
             <template #body="{ data }">
               <div class="flex gap-1">

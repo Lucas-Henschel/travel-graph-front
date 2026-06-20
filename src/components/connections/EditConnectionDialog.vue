@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { Form, type FormSubmitEvent } from "@primevue/forms";
 import { zodResolver } from "@primevue/forms/resolvers/zod";
 import Button from "primevue/button";
@@ -14,16 +14,20 @@ import { useNotification } from "@/composables/useNotification";
 import { cityService } from "@/services/cityService";
 import { connectionService } from "@/services/connectionService";
 import type { CityResponse } from "@/types/city";
-import type { CreateConnectionRequest } from "@/types/connection";
+import type {
+  ConnectionResponse,
+  UpdateConnectionRequest,
+} from "@/types/connection";
 
 const visible = defineModel<boolean>("visible", { required: true });
-const emit = defineEmits<{ created: [] }>();
+const props = defineProps<{ connection: ConnectionResponse | null }>();
+const emit = defineEmits<{ updated: [] }>();
 
 const loading = ref(false);
 const cities = ref<CityResponse[]>([]);
 const toast = useNotification();
 
-const createConnectionSchema = z
+const editConnectionSchema = z
   .object({
     originCityId: z.string({ message: "Selecione a cidade de origem." }),
     destinationCityId: z.string({ message: "Selecione a cidade de destino." }),
@@ -45,18 +49,23 @@ const createConnectionSchema = z
     path: ["hours"],
   });
 
-const initialValues: Partial<{
-  originCityId: number;
-  destinationCityId: number;
-  distance: number;
-  hours: number;
-  minutes: number;
-}> = {
-  hours: 0,
-  minutes: 0,
-};
+const resolver = zodResolver(editConnectionSchema);
 
-const resolver = zodResolver(createConnectionSchema);
+const initialValues = computed(() => {
+  const connection = props.connection;
+
+  if (!connection) {
+    return { hours: 0, minutes: 0 };
+  }
+
+  return {
+    originCityId: connection.originCityId,
+    destinationCityId: connection.destinationCityId,
+    distance: connection.distance,
+    hours: Math.floor(connection.time),
+    minutes: Math.round((connection.time % 1) * 60),
+  };
+});
 
 async function fetchCities() {
   const { data } = await cityService.findAll();
@@ -66,7 +75,7 @@ async function fetchCities() {
 }
 
 async function handleSubmit(event: FormSubmitEvent) {
-  if (!event.valid) return;
+  if (!event.valid || !props.connection) return;
 
   loading.value = true;
 
@@ -79,14 +88,17 @@ async function handleSubmit(event: FormSubmitEvent) {
       minutes: number;
     };
 
-  const payload: CreateConnectionRequest = {
+  const payload: UpdateConnectionRequest = {
     originCityId,
     destinationCityId,
     distance,
     time: hours + minutes / 60,
   };
 
-  const { error } = await connectionService.create(payload);
+  const { error } = await connectionService.update(
+    props.connection.id,
+    payload,
+  );
 
   if (error) {
     toast.error("Erro ao salvar", error);
@@ -94,11 +106,11 @@ async function handleSubmit(event: FormSubmitEvent) {
     return;
   }
 
-  toast.success("Conexão criada", "A conexão foi criada com sucesso.");
+  toast.success("Conexão atualizada", "A conexão foi atualizada com sucesso.");
   visible.value = false;
   loading.value = false;
 
-  emit("created");
+  emit("updated");
 }
 
 onMounted(fetchCities);
@@ -107,7 +119,7 @@ onMounted(fetchCities);
 <template>
   <Dialog
     v-model:visible="visible"
-    header="Nova conexão"
+    header="Editar conexão"
     modal
     :style="{ width: '28rem' }"
     :pt="{
@@ -117,6 +129,7 @@ onMounted(fetchCities);
     }"
   >
     <Form
+      :key="connection?.id"
       v-slot="$form"
       :initialValues="initialValues"
       :resolver="resolver"
@@ -126,15 +139,16 @@ onMounted(fetchCities);
         <div class="space-y-2">
           <FloatLabel variant="in">
             <Select
-              id="create-connection-origin"
+              id="edit-connection-origin"
               name="originCityId"
               :options="cities"
               optionLabel="name"
               optionValue="id"
               fluid
+              disabled
               :invalid="$form.originCityId?.invalid"
             />
-            <label for="create-connection-origin">Cidade de origem</label>
+            <label for="edit-connection-origin">Cidade de origem</label>
           </FloatLabel>
 
           <Message
@@ -150,15 +164,16 @@ onMounted(fetchCities);
         <div class="space-y-2">
           <FloatLabel variant="in">
             <Select
-              id="create-connection-destination"
+              id="edit-connection-destination"
               name="destinationCityId"
               :options="cities"
               optionLabel="name"
               optionValue="id"
               fluid
+              disabled
               :invalid="$form.destinationCityId?.invalid"
             />
-            <label for="create-connection-destination">Cidade de destino</label>
+            <label for="edit-connection-destination">Cidade de destino</label>
           </FloatLabel>
 
           <Message
@@ -174,7 +189,7 @@ onMounted(fetchCities);
         <div class="space-y-2">
           <FloatLabel variant="in">
             <InputNumber
-              id="create-connection-distance"
+              id="edit-connection-distance"
               name="distance"
               fluid
               :minFractionDigits="1"
@@ -182,7 +197,7 @@ onMounted(fetchCities);
               suffix=" km"
               :invalid="$form.distance?.invalid"
             />
-            <label for="create-connection-distance">Distância (km)</label>
+            <label for="edit-connection-distance">Distância (km)</label>
           </FloatLabel>
 
           <Message
@@ -200,7 +215,7 @@ onMounted(fetchCities);
             <div class="flex-1">
               <FloatLabel variant="in">
                 <InputNumber
-                  id="create-connection-hours"
+                  id="edit-connection-hours"
                   name="hours"
                   fluid
                   :min="0"
@@ -210,13 +225,13 @@ onMounted(fetchCities);
                   suffix=" h"
                   :invalid="$form.hours?.invalid"
                 />
-                <label for="create-connection-hours">Horas</label>
+                <label for="edit-connection-hours">Horas</label>
               </FloatLabel>
             </div>
             <div class="flex-1">
               <FloatLabel variant="in">
                 <InputNumber
-                  id="create-connection-minutes"
+                  id="edit-connection-minutes"
                   name="minutes"
                   fluid
                   :min="0"
@@ -227,7 +242,7 @@ onMounted(fetchCities);
                   suffix=" min"
                   :invalid="$form.minutes?.invalid"
                 />
-                <label for="create-connection-minutes">Minutos</label>
+                <label for="edit-connection-minutes">Minutos</label>
               </FloatLabel>
             </div>
           </div>
@@ -258,7 +273,7 @@ onMounted(fetchCities);
           text
           @click="visible = false"
         />
-        <Button label="Criar" type="submit" :loading="loading" />
+        <Button label="Salvar" type="submit" :loading="loading" />
       </div>
     </Form>
   </Dialog>
