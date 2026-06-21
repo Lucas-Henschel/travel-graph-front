@@ -9,13 +9,13 @@ import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
 import InputText from "primevue/inputtext";
 import { useNotification } from "@/composables/useNotification";
-import { userService } from "@/services/userService";
-import type { UserResponse } from "@/types/user";
-import CreateUserDialog from "@/components/users/CreateUserDialog.vue";
-import EditUserDialog from "@/components/users/EditUserDialog.vue";
-import DeleteUserDialog from "@/components/users/DeleteUserDialog.vue";
+import { cityService } from "@/services/cityService";
+import type { CityResponse } from "@/types/city";
+import CreateCityDialog from "@/components/cities/CreateCityDialog.vue";
+import EditCityDialog from "@/components/cities/EditCityDialog.vue";
+import DeleteCityDialog from "@/components/cities/DeleteCityDialog.vue";
 
-const users = ref<UserResponse[]>([]);
+const cities = ref<CityResponse[]>([]);
 const loading = ref(false);
 const toast = useNotification();
 
@@ -26,34 +26,34 @@ const filters = ref({
 const createDialogVisible = ref(false);
 const editDialogVisible = ref(false);
 const deleteDialogVisible = ref(false);
-const selectedUser = ref<UserResponse | null>(null);
+const selectedCity = ref<CityResponse | null>(null);
 
-async function fetchUsers() {
+async function fetchCities() {
   loading.value = true;
 
-  const { data, error } = await userService.findAll();
+  const { data, error } = await cityService.findAll();
 
   if (!data || error) {
-    users.value = [];
+    cities.value = [];
     toast.error("Erro ao carregar", error);
   } else {
-    users.value = data;
+    cities.value = data;
   }
 
   loading.value = false;
 }
 
-function openEditDialog(user: UserResponse) {
-  selectedUser.value = user;
+function openEditDialog(city: CityResponse) {
+  selectedCity.value = city;
   editDialogVisible.value = true;
 }
 
-function openDeleteDialog(user: UserResponse) {
-  selectedUser.value = user;
+function openDeleteDialog(city: CityResponse) {
+  selectedCity.value = city;
   deleteDialogVisible.value = true;
 }
 
-onMounted(fetchUsers);
+onMounted(fetchCities);
 </script>
 
 <template>
@@ -62,7 +62,7 @@ onMounted(fetchUsers);
       class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
     >
       <div>
-        <h1 class="text-2xl font-bold text-white">Usuários</h1>
+        <h1 class="text-2xl font-bold text-white">Cidades</h1>
       </div>
     </div>
 
@@ -71,7 +71,7 @@ onMounted(fetchUsers);
         <div class="flex justify-between mb-6">
           <Button
             icon="pi pi-plus"
-            label="Novo usuário"
+            label="Nova cidade"
             size="small"
             @click="createDialogVisible = true"
           />
@@ -80,17 +80,17 @@ onMounted(fetchUsers);
             <InputIcon class="pi pi-search" />
             <InputText
               v-model="filters.global.value"
-              placeholder="Buscar usuários..."
+              placeholder="Buscar cidades..."
               class="!w-full sm:!w-80"
             />
           </IconField>
         </div>
 
         <DataTable
-          :value="users"
+          :value="cities"
           :loading="loading"
           v-model:filters="filters"
-          :globalFilterFields="['name', 'email']"
+          :globalFilterFields="['name']"
           paginator
           :rows="10"
           stripedRows
@@ -118,13 +118,26 @@ onMounted(fetchUsers);
                 <div
                   class="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500/20 text-xs font-medium text-cyan-400"
                 >
-                  {{ data.name.charAt(0).toUpperCase() }}
+                  <i class="pi pi-building text-sm" />
                 </div>
-                <div>
-                  <p class="font-medium text-white">{{ data.name }}</p>
-                  <p class="text-xs text-slate-500">{{ data.email }}</p>
-                </div>
+                <p class="font-medium text-white">{{ data.name }}</p>
               </div>
+            </template>
+          </Column>
+
+          <Column field="latitude" header="Latitude" sortable>
+            <template #body="{ data }">
+              <span class="text-sm text-slate-400">
+                {{ data.latitude ?? "—" }}
+              </span>
+            </template>
+          </Column>
+
+          <Column field="longitude" header="Longitude" sortable>
+            <template #body="{ data }">
+              <span class="text-sm text-slate-400">
+                {{ data.longitude ?? "—" }}
+              </span>
             </template>
           </Column>
 
@@ -165,29 +178,29 @@ onMounted(fetchUsers);
 
           <template #empty>
             <div class="py-8 text-center text-slate-500">
-              <i class="pi pi-users mb-2 text-2xl" />
-              <p>Nenhum usuário encontrado.</p>
+              <i class="pi pi-building mb-2 text-2xl" />
+              <p>Nenhuma cidade encontrada.</p>
             </div>
           </template>
         </DataTable>
       </template>
     </Card>
 
-    <CreateUserDialog
+    <CreateCityDialog
       v-model:visible="createDialogVisible"
-      @created="fetchUsers"
+      @created="fetchCities"
     />
 
-    <EditUserDialog
+    <EditCityDialog
       v-model:visible="editDialogVisible"
-      :user="selectedUser"
-      @updated="fetchUsers"
+      :city="selectedCity"
+      @updated="fetchCities"
     />
 
-    <DeleteUserDialog
+    <DeleteCityDialog
       v-model:visible="deleteDialogVisible"
-      :user="selectedUser"
-      @deleted="fetchUsers"
+      :city="selectedCity"
+      @deleted="fetchCities"
     />
   </div>
 </template>

@@ -2,7 +2,6 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
-  role?: string;
 }
 
 export interface LoginCredentials {
@@ -12,7 +11,7 @@ export interface LoginCredentials {
 
 export interface LoginResponse {
   token: string;
-  user: AuthUser;
+  currentUser: AuthUser;
 }
 
 export type AuthStatus = "anonymous" | "loading" | "authenticated" | "error";

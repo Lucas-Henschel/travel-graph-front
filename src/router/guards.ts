@@ -22,7 +22,7 @@ export function registerGuards(router: Router) {
     }
 
     if (to.name === "login" && authStore.isAuthenticated) {
-      return { name: "dashboard" };
+      return { name: "dashboard-routes" };
     }
 
     return undefined;

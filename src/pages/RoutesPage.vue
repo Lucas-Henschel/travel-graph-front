@@ -1,0 +1,728 @@
+<script setup lang="ts">
+import { ref, onMounted, computed, reactive, nextTick } from "vue";
+import {
+  LMap,
+  LTileLayer,
+  LMarker,
+  LPolyline,
+  LPopup,
+  LTooltip,
+} from "@vue-leaflet/vue-leaflet";
+import L from "leaflet";
+import { defineConfigs } from "v-network-graph";
+import Dropdown from "primevue/dropdown";
+import SelectButton from "primevue/selectbutton";
+import Button from "primevue/button";
+
+import { useNotification } from "@/composables/useNotification";
+import { routeService } from "@/services/routeService";
+import { connectionService } from "@/services/connectionService";
+import { useAuthStore } from "@/stores/auth";
+import type { CityResponse } from "@/types/city";
+import type { ConnectionResponse } from "@/types/connection";
+import type { RouteResponse } from "@/types/route";
+import { formatHours } from "@/utils/time";
+
+const toast = useNotification();
+const authStore = useAuthStore();
+
+const cidades = ref<CityResponse[]>([]);
+const connections = ref<ConnectionResponse[]>([]);
+const origemId = ref<string | null>(null);
+const destinoId = ref<string | null>(null);
+const criterio = ref<"distance" | "time">("distance");
+const criterioOptions = [
+  { label: "Distância", value: "distance" },
+  { label: "Tempo", value: "time" },
+];
+const loading = ref(false);
+const rota = ref<RouteResponse | null>(null);
+
+const viewMode = ref<"mapa" | "grafo">("mapa");
+const viewModeOptions = [
+  { label: "Mapa", value: "mapa", icon: "pi pi-map" },
+  { label: "Grafo", value: "grafo", icon: "pi pi-share-alt" },
+];
+
+const mapRef = ref<InstanceType<typeof LMap> | null>(null);
+const center = ref<[number, number]>([-15.7, -47.9]);
+const zoom = ref(5);
+
+const canCalculate = computed(
+  () =>
+    origemId.value !== null &&
+    destinoId.value !== null &&
+    origemId.value !== destinoId.value,
+);
+
+const polylineLatLngs = computed(() => {
+  if (!rota.value) return [];
+  return rota.value.cities.map(
+    (c) => [c.latitude, c.longitude] as [number, number],
+  );
+});
+
+function markerColor(index: number, total: number): string {
+  if (index === 0) return "green";
+  if (index === total - 1) return "red";
+  return "blue";
+}
+
+function createIcon(color: string) {
+  const svgIcon = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="24" height="36">
+      <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="${color}"/>
+      <circle cx="12" cy="12" r="5" fill="white"/>
+    </svg>
+  `;
+  return L.divIcon({
+    html: svgIcon,
+    className: "",
+    iconSize: [24, 36],
+    iconAnchor: [12, 36],
+    popupAnchor: [0, -36],
+  });
+}
+
+const routeTotals = computed(() => {
+  if (!rota.value) return { distance: 0, time: 0 };
+  const cities = rota.value.cities;
+  let distance = 0;
+  let time = 0;
+  for (let i = 0; i < cities.length - 1; i++) {
+    const a = cities[i];
+    const b = cities[i + 1];
+    const con = connections.value.find(
+      (c) =>
+        (c.originCityId === a.id && c.destinationCityId === b.id) ||
+        (c.originCityId === b.id && c.destinationCityId === a.id),
+    );
+    if (!con) continue;
+    distance += con.distance;
+    time += con.time;
+  }
+  return { distance, time };
+});
+
+const segmentLabels = computed(() => {
+  if (!rota.value) return [];
+  const cities = rota.value.cities;
+  const labels: {
+    lat: number;
+    lng: number;
+    text: string;
+  }[] = [];
+  for (let i = 0; i < cities.length - 1; i++) {
+    const a = cities[i];
+    const b = cities[i + 1];
+    const con = connections.value.find(
+      (c) =>
+        (c.originCityId === a.id && c.destinationCityId === b.id) ||
+        (c.originCityId === b.id && c.destinationCityId === a.id),
+    );
+    if (!con) continue;
+    const text =
+      criterio.value === "distance"
+        ? `${con.distance} km`
+        : formatHours(con.time);
+    labels.push({
+      lat: (a.latitude + b.latitude) / 2,
+      lng: (a.longitude + b.longitude) / 2,
+      text,
+    });
+  }
+  return labels;
+});
+
+function createLabelIcon(text: string) {
+  return L.divIcon({
+    html: `<div class="route-edge-label">${text}</div>`,
+    className: "route-edge-label-wrapper",
+    iconSize: [60, 22],
+    iconAnchor: [30, 11],
+  });
+}
+
+const expandedCities = ref<Set<number>>(new Set());
+
+function toggleCityExpand(index: number) {
+  if (expandedCities.value.has(index)) {
+    expandedCities.value.delete(index);
+  } else {
+    expandedCities.value.add(index);
+  }
+}
+
+// --- Graph visualization (only route cities + pontos turísticos) ---
+
+const routeCityIds = computed(() => {
+  if (!rota.value) return [];
+  return rota.value.cities.map((c) => c.id);
+});
+
+const graphNodes = computed(() => {
+  if (!rota.value) return {};
+  const nodes: Record<
+    string,
+    { name: string; type: "cidade" | "ponto"; categoria?: string }
+  > = {};
+  for (const city of rota.value.cities) {
+    nodes[`c${city.id}`] = { name: city.name, type: "cidade" };
+    for (const attraction of city.attractions) {
+      nodes[`p${attraction.id}`] = {
+        name: attraction.name,
+        type: "ponto",
+        categoria: attraction.category,
+      };
+    }
+  }
+  return nodes;
+});
+
+const graphEdges = computed(() => {
+  if (!rota.value) return {};
+  const edges: Record<
+    string,
+    { source: string; target: string; label?: string; type: "rota" | "ponto" }
+  > = {};
+  const ids = routeCityIds.value;
+
+  for (let i = 0; i < ids.length - 1; i++) {
+    const con = connections.value.find(
+      (c) =>
+        (c.originCityId === ids[i] && c.destinationCityId === ids[i + 1]) ||
+        (c.originCityId === ids[i + 1] && c.destinationCityId === ids[i]),
+    );
+    const label = con
+      ? criterio.value === "distance"
+        ? `${con.distance} km`
+        : formatHours(con.time)
+      : "";
+    edges[`r${ids[i]}-${ids[i + 1]}`] = {
+      source: `c${ids[i]}`,
+      target: `c${ids[i + 1]}`,
+      label,
+      type: "rota",
+    };
+  }
+
+  for (const city of rota.value.cities) {
+    for (const attraction of city.attractions) {
+      edges[`pt${attraction.id}`] = {
+        source: `c${city.id}`,
+        target: `p${attraction.id}`,
+        type: "ponto",
+      };
+    }
+  }
+
+  return edges;
+});
+
+const graphLayouts = computed(() => {
+  if (!rota.value) return { nodes: {} };
+  const routeCities = rota.value.cities;
+
+  if (!routeCities.length) return { nodes: {} };
+
+  const lats = routeCities.map((c) => c.latitude);
+  const lngs = routeCities.map((c) => c.longitude);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const rangeLng = maxLng - minLng || 1;
+  const rangeLat = maxLat - minLat || 1;
+  const sizeX = 600;
+  const sizeY = 500;
+
+  const nodes: Record<string, { x: number; y: number }> = {};
+
+  for (const city of rota.value.cities) {
+    const cx = ((city.longitude - minLng) / rangeLng) * sizeX;
+    const cy = ((maxLat - city.latitude) / rangeLat) * sizeY;
+    nodes[`c${city.id}`] = { x: cx, y: cy };
+
+    const attractions = city.attractions;
+    const angleStep = attractions.length > 1 ? Math.PI / (attractions.length + 1) : 0;
+    const radius = 100;
+    for (let i = 0; i < attractions.length; i++) {
+      const angle = -Math.PI / 2 + angleStep * (i + 1);
+      nodes[`p${attractions[i].id}`] = {
+        x: cx + Math.cos(angle) * radius,
+        y: cy + Math.sin(angle) * radius,
+      };
+    }
+  }
+  return { nodes };
+});
+
+const routeEdgeIds = computed(() => {
+  const ids = routeCityIds.value;
+  const keys = new Set<string>();
+  for (let i = 0; i < ids.length - 1; i++) {
+    keys.add(`r${ids[i]}-${ids[i + 1]}`);
+  }
+  return keys;
+});
+
+const pontoEdgeIds = computed(() => {
+  if (!rota.value) return new Set<string>();
+  const keys = new Set<string>();
+  for (const city of rota.value.cities) {
+    for (const attraction of city.attractions) {
+      keys.add(`pt${attraction.id}`);
+    }
+  }
+  return keys;
+});
+
+function categoriaColor(categoria?: string): string {
+  switch (categoria) {
+    case "Histórico":
+      return "#b45309";
+    case "Natureza":
+      return "#15803d";
+    case "Praia":
+      return "#0369a1";
+    case "Museu":
+      return "#7e22ce";
+    case "Urbano":
+      return "#475569";
+    default:
+      return "#334155";
+  }
+}
+
+const graphConfigs = reactive(
+  defineConfigs({
+    view: {
+      autoPanAndZoomOnLoad: "fit-content",
+      layoutHandler: undefined,
+    },
+    node: {
+      normal: {
+        type: "circle",
+        radius: 20,
+        color: "#0e7490",
+        strokeWidth: 2,
+        strokeColor: "#22d3ee",
+      },
+      hover: {
+        color: "#155e75",
+      },
+      label: {
+        visible: true,
+        fontSize: 12,
+        color: "#e2e8f0",
+        direction: "south",
+        margin: 6,
+      },
+    },
+    edge: {
+      normal: {
+        color: "#22d3ee",
+        width: 3,
+      },
+      hover: {
+        color: "#67e8f9",
+      },
+      label: {
+        fontSize: 11,
+        color: "#94a3b8",
+      },
+    },
+  }),
+);
+
+// --- Data fetching ---
+
+async function fetchCidades() {
+  const [citiesResult, connectionsResult] = await Promise.all([
+    routeService.listCities(),
+    connectionService.findAll(),
+  ]);
+
+  if (!citiesResult.data || citiesResult.error) {
+    toast.error("Erro ao carregar cidades", citiesResult.error);
+    return;
+  }
+
+  if (!connectionsResult.data || connectionsResult.error) {
+    toast.error("Erro ao carregar conexões", connectionsResult.error);
+    return;
+  }
+
+  cidades.value = citiesResult.data;
+  connections.value = connectionsResult.data;
+}
+
+async function calcular() {
+  if (!canCalculate.value) return;
+
+  loading.value = true;
+  rota.value = null;
+  expandedCities.value.clear();
+
+  const { data, error } = await routeService.calculateRoute(
+    origemId.value!,
+    destinoId.value!,
+    criterio.value,
+  );
+
+  if (!data || error) {
+    toast.error("Erro ao calcular rota", error);
+    loading.value = false;
+    return;
+  }
+
+  rota.value = data;
+  loading.value = false;
+
+  if (viewMode.value === "mapa") {
+    const points = data.cities
+      .map((c) => [c.latitude, c.longitude] as [number, number])
+      .filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
+
+    if (points.length > 0) {
+      await nextTick();
+      const map = mapRef.value?.leafletObject;
+      if (map) {
+        map.fitBounds(points, { padding: [50, 50] });
+      }
+    }
+  }
+}
+
+onMounted(fetchCidades);
+</script>
+
+<template>
+  <div
+    class="relative -mx-4 -my-6 sm:-mx-6 lg:-mx-8 lg:-my-6"
+    style="height: calc(100vh - 0px)"
+  >
+    <!-- Map View -->
+    <LMap
+      v-if="viewMode === 'mapa'"
+      ref="mapRef"
+      :center="center"
+      :zoom="zoom"
+      :use-global-leaflet="false"
+      class="h-full w-full"
+    >
+      <LTileLayer
+        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+        layer-type="base"
+      />
+
+      <template v-if="rota">
+        <LPolyline
+          :lat-lngs="polylineLatLngs"
+          :color="'#22d3ee'"
+          :weight="4"
+          :opacity="0.8"
+        />
+
+        <LMarker
+          v-for="(seg, i) in segmentLabels"
+          :key="`seg-${i}`"
+          :lat-lng="[seg.lat, seg.lng]"
+          :icon="createLabelIcon(seg.text)"
+          :interactive="false"
+        />
+
+        <LMarker
+          v-for="(city, index) in rota.cities"
+          :key="index"
+          :lat-lng="[city.latitude, city.longitude]"
+          :icon="createIcon(markerColor(index, rota.cities.length))"
+        >
+          <LTooltip>{{ city.name }}</LTooltip>
+          <LPopup>
+            <div class="min-w-[200px]">
+              <h3 class="text-sm font-bold text-white mb-1">
+                {{ city.name }}
+              </h3>
+              <p
+                v-if="city.attractions.length"
+                class="text-xs text-slate-400 mb-2"
+              >
+                {{ city.attractions.length }} ponto(s) turístico(s)
+              </p>
+              <ul class="space-y-1">
+                <li
+                  v-for="attraction in city.attractions"
+                  :key="attraction.id"
+                  class="text-xs"
+                >
+                  <span class="font-medium text-cyan-400">{{
+                    attraction.name
+                  }}</span>
+                  <span class="text-slate-400"> - {{ attraction.description }}</span>
+                </li>
+              </ul>
+            </div>
+          </LPopup>
+        </LMarker>
+      </template>
+    </LMap>
+
+    <!-- Graph View -->
+    <div v-else class="h-full w-full bg-slate-950">
+      <div v-if="!rota" class="flex h-full items-center justify-center">
+        <p class="text-slate-500 text-sm">
+          Calcule uma rota para visualizar o grafo.
+        </p>
+      </div>
+      <v-network-graph
+        v-else
+        class="h-full w-full"
+        :nodes="graphNodes"
+        :edges="graphEdges"
+        :layouts="graphLayouts"
+        :configs="graphConfigs"
+      >
+        <template #override-node="{ nodeId, scale, config, ...slotProps }">
+          <circle
+            v-if="graphNodes[nodeId]?.type === 'cidade'"
+            v-bind="slotProps"
+            :r="22 * scale"
+            fill="#0e7490"
+            stroke="#22d3ee"
+            :stroke-width="3 * scale"
+          />
+          <rect
+            v-else
+            v-bind="slotProps"
+            :x="-14 * scale"
+            :y="-14 * scale"
+            :width="28 * scale"
+            :height="28 * scale"
+            :rx="6 * scale"
+            :fill="categoriaColor(graphNodes[nodeId]?.categoria)"
+            stroke="#475569"
+            :stroke-width="1.5 * scale"
+          />
+        </template>
+
+        <template
+          #override-node-label="{
+            nodeId,
+            scale,
+            text,
+            x,
+            y,
+            config,
+            textAnchor,
+            dominantBaseline,
+          }"
+        >
+          <text
+            :x="x"
+            :y="y + (graphNodes[nodeId]?.type === 'cidade' ? 30 : 22) * scale"
+            :font-size="
+              (graphNodes[nodeId]?.type === 'cidade' ? 12 : 10) * scale
+            "
+            :fill="
+              graphNodes[nodeId]?.type === 'cidade' ? '#e2e8f0' : '#94a3b8'
+            "
+            :font-weight="
+              graphNodes[nodeId]?.type === 'cidade' ? 'bold' : 'normal'
+            "
+            text-anchor="middle"
+            dominant-baseline="hanging"
+          >
+            {{ text }}
+          </text>
+        </template>
+
+        <template #edge-label="{ edge, ...slotProps }">
+          <v-edge-label
+            v-if="edge.label"
+            v-bind="slotProps"
+            :text="edge.label"
+            align="center"
+            vertical-align="above"
+          />
+        </template>
+
+        <template #override-edge="{ edge, edgeId, scale, ...slotProps }">
+          <line
+            v-if="pontoEdgeIds.has(edgeId)"
+            v-bind="slotProps"
+            stroke="#475569"
+            :stroke-width="1.5 * scale"
+            stroke-dasharray="6 4"
+          />
+        </template>
+      </v-network-graph>
+    </div>
+
+    <!-- Control Panel -->
+    <div
+      class="absolute top-4 left-4 z-[1000] w-80 rounded-2xl border border-white/10 bg-slate-900/90 p-4 backdrop-blur-xl"
+    >
+      <div class="mb-4">
+        <h1 class="text-lg font-bold text-white">
+          Olá, {{ authStore.user?.name }}
+        </h1>
+        <p class="mt-0.5 text-xs text-slate-400">
+          Bem-vindo ao painel do TravelGraph.
+        </p>
+      </div>
+
+      <div class="space-y-3">
+        <Dropdown
+          v-model="origemId"
+          :options="cidades"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Cidade de origem"
+          filter
+          class="!w-full"
+        />
+
+        <Dropdown
+          v-model="destinoId"
+          :options="cidades"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Cidade de destino"
+          filter
+          class="!w-full"
+        />
+
+        <SelectButton
+          v-model="criterio"
+          :options="criterioOptions"
+          optionLabel="label"
+          optionValue="value"
+          class="!w-full"
+          :pt="{
+            root: { class: '!flex' },
+            pcButton: { root: { class: '!flex-1' } },
+          }"
+        />
+
+        <!-- View Mode Toggle -->
+        <div class="flex items-center gap-2 rounded-xl bg-slate-800/60 p-1">
+          <button
+            v-for="opt in viewModeOptions"
+            :key="opt.value"
+            class="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+            :class="
+              viewMode === opt.value
+                ? 'bg-cyan-600 text-white shadow'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+            "
+            @click="viewMode = opt.value as 'mapa' | 'grafo'"
+          >
+            <i :class="opt.icon" class="text-[11px]" />
+            {{ opt.label }}
+          </button>
+        </div>
+
+        <Button
+          label="Calcular Rota"
+          icon="pi pi-directions"
+          :loading="loading"
+          :disabled="!canCalculate"
+          class="!w-full"
+          @click="calcular"
+        />
+      </div>
+
+      <div v-if="rota" class="mt-4 border-t border-white/10 pt-4">
+        <div class="mb-3 flex gap-4">
+          <div class="flex-1 rounded-xl bg-slate-800/60 p-3 text-center">
+            <p class="text-xs text-slate-400">Distância</p>
+            <p class="text-lg font-bold text-cyan-400">
+              {{ routeTotals.distance.toLocaleString("pt-BR") }} km
+            </p>
+          </div>
+          <div class="flex-1 rounded-xl bg-slate-800/60 p-3 text-center">
+            <p class="text-xs text-slate-400">Tempo</p>
+            <p class="text-lg font-bold text-cyan-400">
+              {{ formatHours(routeTotals.time) }}
+            </p>
+          </div>
+        </div>
+
+        <h3 class="mb-2 text-sm font-medium text-slate-300">
+          Cidades no caminho
+        </h3>
+        <ul class="space-y-1">
+          <li
+            v-for="(city, index) in rota.cities"
+            :key="index"
+            class="rounded-lg"
+          >
+            <button
+              class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-white/5"
+              @click="toggleCityExpand(index)"
+            >
+              <span
+                class="h-2 w-2 shrink-0 rounded-full"
+                :class="{
+                  'bg-green-400': index === 0,
+                  'bg-red-400': index === rota!.cities.length - 1,
+                  'bg-blue-400': index > 0 && index < rota!.cities.length - 1,
+                }"
+              />
+              <span class="flex-1 text-white">{{ city.name }}</span>
+              <i
+                v-if="city.attractions.length"
+                class="pi text-xs text-slate-400"
+                :class="
+                  expandedCities.has(index)
+                    ? 'pi-chevron-up'
+                    : 'pi-chevron-down'
+                "
+              />
+            </button>
+            <div
+              v-if="expandedCities.has(index) && city.attractions.length"
+              class="ml-4 mt-1 mb-1 space-y-1 border-l border-white/10 pl-3"
+            >
+              <div
+                v-for="attraction in city.attractions"
+                :key="attraction.id"
+                class="text-xs"
+              >
+                <span class="font-medium text-cyan-400">{{ attraction.name }}</span>
+                <span
+                  class="ml-1 rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400"
+                >
+                  {{ attraction.category }}
+                </span>
+                <p class="mt-0.5 text-slate-500">{{ attraction.description }}</p>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style>
+.route-edge-label-wrapper {
+  background: transparent;
+  border: none;
+}
+.route-edge-label {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  color: #e0f2fe;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+</style>
